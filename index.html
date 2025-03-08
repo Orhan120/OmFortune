@@ -7,14 +7,12 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214107660665483"
      crossorigin="anonymous"></script>
     <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js"></script>
-    <script type="text/javascript">
-        aclib.runAutoTag({
-            zoneId: '7miobjkudb',
-        });
-    </script>
+    <!-- aclib script removed as it was causing errors -->
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Satisfy&display=swap');
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a237e, #311b92);
             color: white;
             margin: 0;
@@ -23,6 +21,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow-x: hidden;
         }
 
         /* Fal seçenekleri için stil */
@@ -243,15 +242,124 @@
             padding: 30px;
             width: 80%;
             max-width: 500px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
+                        0 0 40px rgba(156, 39, 176, 0.2),
+                        inset 0 0 15px rgba(156, 39, 176, 0.3);
             text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: scale(0.95);
+            opacity: 0;
+            animation: containerAppear 1s forwards 0.2s;
+            overflow: hidden;
+            position: relative;
         }
 
+        /* Container için parlama efekti */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            opacity: 0;
+            animation: containerGlow 8s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes containerAppear {
+            0% {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes containerGlow {
+            0%, 100% {
+                transform: translate(-50%, -50%) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) rotate(180deg);
+                opacity: 0.3;
+            }
+        }
+
+        /* Sihirli başlık animasyonu */
         h1 {
             margin-top: 0;
             color: #e0f7fa;
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            font-family: 'Satisfy', cursive;
+            position: relative;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: titleAppear 1.5s forwards 0.5s, titleGlow 3s infinite 2s;
+        }
+
+        h1::before, h1::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 3px;
+            bottom: -10px;
+            background: linear-gradient(to right, transparent, #e1bee7, transparent);
+            transition: width 0.8s ease;
+            opacity: 0;
+            animation: lineExpand 1.2s forwards 1.8s;
+        }
+
+        h1::before {
+            left: 50%;
+        }
+
+        h1::after {
+            right: 50%;
+        }
+
+        @keyframes titleAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.8);
+                text-shadow: 0 0 10px #9c27b0, 0 0 20px #9c27b0, 0 0 30px #9c27b0;
+            }
+            70% {
+                opacity: 0.8;
+                transform: translateY(5px) scale(1.1);
+                text-shadow: 0 0 20px #9c27b0, 0 0 40px #9c27b0, 0 0 60px #e040fb;
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(156, 39, 176, 0.5);
+            }
+        }
+
+        @keyframes titleGlow {
+            0%, 100% {
+                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(156, 39, 176, 0.5);
+            }
+            50% {
+                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 15px #9c27b0, 0 0 25px #e040fb;
+            }
+        }
+
+        @keyframes lineExpand {
+            0% {
+                width: 0;
+                opacity: 0;
+            }
+            100% {
+                width: 40%;
+                opacity: 1;
+            }
         }
 
         .form-group {
@@ -262,26 +370,64 @@
             width: 100%;
             padding: 12px;
             margin-top: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
             border: none;
             font-size: 1rem;
+            transition: all 0.3s ease;
         }
 
         input {
             background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(156, 39, 176, 0.2);
+            letter-spacing: 0.5px;
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border: 1px solid rgba(156, 39, 176, 0.5);
         }
 
         button {
-            background-color: #7e57c2;
+            background: linear-gradient(135deg, #9c27b0, #673ab7);
             color: white;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             font-weight: bold;
+            box-shadow: 0 4px 15px rgba(103, 58, 183, 0.4);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            letter-spacing: 1px;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s ease;
+            z-index: -1;
         }
 
         button:hover {
-            background-color: #9575cd;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, #aa2bc2, #7e57c2);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(103, 58, 183, 0.6);
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(103, 58, 183, 0.4);
         }
 
         #fingerprintButton {
@@ -443,7 +589,7 @@
             overflow-x: hidden;
         }
 
-        /* Fal mesajı için harf animasyonu */
+        /* Fal mesajı için geliştirilmiş harf animasyonu */
         .magical-text {
             display: inline-block;
             opacity: 0;
@@ -452,6 +598,32 @@
             color: white;
             text-shadow: 0 0 8px rgba(206, 147, 216, 0.7);
             animation: textReveal 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+            position: relative;
+        }
+
+        .magical-text::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(224, 176, 255, 0.7), transparent);
+            animation: textUnderline 0.5s forwards;
+            animation-delay: inherit;
+            animation-delay: calc(var(--delay) + 0.3s);
+            opacity: 0;
+        }
+
+        @keyframes textUnderline {
+            0% {
+                width: 0;
+                opacity: 0;
+            }
+            100% {
+                width: 100%;
+                opacity: 0.7;
+            }
         }
 
         /* Fal mesajı arka plan parlaması */
@@ -571,6 +743,172 @@
     <amp-auto-ads type="adsense"
         data-ad-client="ca-pub-7214107660665483">
     </amp-auto-ads>
+
+    <!-- Sihirli Elementler -->
+    <div class="magic-elements">
+        <div class="magic-circle"></div>
+        <div class="magic-circle"></div>
+        <div class="magic-circle"></div>
+        <div class="floating-crystal"></div>
+        <div class="floating-crystal"></div>
+        <div class="magic-rune"></div>
+        <div class="magic-rune"></div>
+    </div>
+
+    <style>
+        .magic-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .magic-circle {
+            position: absolute;
+            border: 1px solid rgba(224, 176, 255, 0.3);
+            border-radius: 50%;
+            animation: floatAndRotate 20s infinite linear;
+        }
+
+        .magic-circle:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            left: -150px;
+            border-width: 2px;
+            animation-duration: 40s;
+            opacity: 0.4;
+        }
+
+        .magic-circle:nth-child(2) {
+            width: 220px;
+            height: 220px;
+            bottom: 10%;
+            right: -100px;
+            border-width: 3px;
+            animation-duration: 35s;
+            animation-delay: 2s;
+            opacity: 0.3;
+        }
+
+        .magic-circle:nth-child(3) {
+            width: 180px;
+            height: 180px;
+            top: 60%;
+            left: 20%;
+            border-width: 1px;
+            animation-duration: 30s;
+            animation-delay: 5s;
+            opacity: 0.2;
+        }
+
+        .floating-crystal {
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(224, 176, 255, 0.2), rgba(156, 39, 176, 0.1));
+            clip-path: polygon(50% 0%, 100% 40%, 50% 100%, 0% 40%);
+            animation: floatAndGlow 15s infinite ease-in-out;
+            box-shadow: 0 0 20px rgba(224, 176, 255, 0.3);
+        }
+
+        .floating-crystal:nth-child(4) {
+            top: 15%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .floating-crystal:nth-child(5) {
+            bottom: 10%;
+            left: 5%;
+            width: 30px;
+            height: 45px;
+            animation-delay: 5s;
+            animation-duration: 18s;
+        }
+
+        .magic-rune {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 1px solid rgba(224, 176, 255, 0.2);
+            opacity: 0.6;
+            animation: runeGlow 8s infinite alternate ease-in-out;
+        }
+
+        .magic-rune:nth-child(6) {
+            top: 40%;
+            left: 5%;
+            transform: rotate(45deg);
+            animation-delay: 1s;
+        }
+
+        .magic-rune:nth-child(7) {
+            bottom: 30%;
+            right: 8%;
+            transform: rotate(30deg);
+            animation-delay: 4s;
+        }
+
+        .magic-rune::before, .magic-rune::after {
+            content: '';
+            position: absolute;
+            background-color: rgba(224, 176, 255, 0.2);
+        }
+
+        .magic-rune::before {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        .magic-rune::after {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+        }
+
+        @keyframes floatAndRotate {
+            0% {
+                transform: rotate(0deg) translate(20px) rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg) translate(20px) rotate(-360deg);
+            }
+        }
+
+        @keyframes floatAndGlow {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.4;
+                box-shadow: 0 0 20px rgba(224, 176, 255, 0.3);
+            }
+            50% {
+                transform: translateY(-20px) rotate(10deg);
+                opacity: 0.7;
+                box-shadow: 0 0 30px rgba(224, 176, 255, 0.5);
+            }
+        }
+
+        @keyframes runeGlow {
+            0% {
+                opacity: 0.3;
+                box-shadow: 0 0 5px rgba(224, 176, 255, 0.2);
+            }
+            100% {
+                opacity: 0.6;
+                box-shadow: 0 0 15px rgba(224, 176, 255, 0.4);
+            }
+        }
+    </style>
     <audio id="backgroundMusic" loop >
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-simple-meditation-music-751.mp3" type="audio/mpeg">
         Tarayıcınız ses elementini desteklemiyor.
@@ -583,7 +921,7 @@
     </div>
 
     <div class="container">
-        <h1>Mistik Falcı</h1>
+        <h1>OmFortune</h1>
 
         <!-- Name Input Section -->
         <div id="nameSection" class="visible">
@@ -1218,7 +1556,40 @@
                     }
 
                     // Kullanıcı bilgilerine dayalı tutarlı fal oluştur
-                    const fortune = getFortuneForUser(userInfo.firstName, userInfo.lastName, userInfo.birthdate);
+                    let fortune = getFortuneForUser(userInfo.firstName, userInfo.lastName, userInfo.birthdate);
+
+                    // Fal metnini satır satır formatlama
+                    fortune = formatFortuneWithLineBreaks(fortune);
+
+                    // Formatlanmış fal metni oluşturan fonksiyon
+                    function formatFortuneWithLineBreaks(text) {
+                        // Cümleleri ayır
+                        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+
+                        // Her 1-2 cümle sonrası satır ekle
+                        let formattedText = '';
+                        let sentenceCount = 0;
+                        let paragraph = '';
+
+                        sentences.forEach(sentence => {
+                            paragraph += sentence.trim() + ' ';
+                            sentenceCount++;
+
+                            // Her 1-2 cümle sonrası yeni paragraf
+                            if (sentenceCount >= (Math.random() > 0.5 ? 1 : 2)) {
+                                formattedText += paragraph.trim() + '\n\n';
+                                paragraph = '';
+                                sentenceCount = 0;
+                            }
+                        });
+
+                        // Kalan cümleleri ekle
+                        if (paragraph.trim()) {
+                            formattedText += paragraph.trim();
+                        }
+
+                        return formattedText.trim();
+                    }
 
                     // Burç bölümünü gizle, fal bölümünü göster
                     horoscopeSection.classList.remove('visible');
@@ -1235,8 +1606,54 @@
                     fortuneGlow.className = 'fortune-glow';
                     fortuneResult.appendChild(fortuneGlow);
 
+                    // Mistik giriş efekti
+                    const introDiv = document.createElement('div');
+                    introDiv.className = 'fortune-intro';
+                    introDiv.innerHTML = '<div class="fortune-symbol">✧</div>';
+                    fortuneResult.appendChild(introDiv);
+
                     // Metni karakter karakter sihirli şekilde göster
-                    displayMagicalText(fortune, fortuneResult);
+                    setTimeout(() => {
+                        introDiv.style.opacity = '0';
+                        setTimeout(() => {
+                            introDiv.remove();
+                            displayMagicalText(fortune, fortuneResult);
+                        }, 500);
+                    }, 1500);
+
+                    // Fortune intro için stil ekle
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .fortune-intro {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            background: rgba(0,0,0,0.2);
+                            z-index: 2;
+                            transition: opacity 0.5s ease;
+                        }
+                        .fortune-symbol {
+                            font-size: 3rem;
+                            color: white;
+                            animation: pulseSymbol 1.5s infinite;
+                        }
+                        @keyframes pulseSymbol {
+                            0%, 100% { 
+                                transform: scale(1);
+                                opacity: 0.7;
+                            }
+                            50% { 
+                                transform: scale(1.5);
+                                opacity: 1;
+                            }
+                        }
+                    `;
+                    document.head.appendChild(style);
 
                     // Parlayan yıldızlar ekle
                     createSparkles(fortuneResult);
@@ -1321,8 +1738,8 @@
                             .then(blob => {
                                 const file = new File([blob], 'mystik-fal.png', { type: 'image/png' });
                                 navigator.share({
-                                    title: 'Mistik Falcı',
-                                    text: 'Mistik Falcı\'dan falım!',
+                                    title: 'OmFortune',
+                                    text: 'OmFortune\'dan falım!',
                                     files: [file]
                                 }).catch(error => {
                                     console.error('Paylaşım hatası:', error);
@@ -1394,7 +1811,7 @@
                     ctx.fillStyle = '#f3e5f5';
                     ctx.font = 'bold 52px "Segoe UI", sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Mistik Falcı', canvas.width / 2, 120);
+                    ctx.fillText('OmFortune', canvas.width / 2, 120);
 
                     // Altın renkli küçük alt başlık
                     ctx.fillStyle = 'rgba(255, 223, 0, 0.85)';
@@ -1744,37 +2161,78 @@
                 horoscopeSection.classList.add('visible');
             });
 
-            // Sihirli metin animasyonu
+            // Geliştirilmiş sihirli metin animasyonu
             function displayMagicalText(text, container) {
                 const words = text.split(' ');
                 let delay = 0;
-                const delayIncrement = 50; // Her harf arasındaki gecikme (ms)
+                const delayIncrement = 40; // Her harf arasındaki gecikme (ms) - daha hızlı animasyon
 
-                words.forEach((word, wordIndex) => {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.style.display = 'inline-block';
-                    wordSpan.style.marginRight = '0.3em';
+                // Metnin satır satır gösterilmesi için paragraf bloklarına ayırma
+                const lines = text.split("\n");
+                if (lines.length > 1) {
+                    // Eğer metin çoklu satır içeriyorsa, her satırı ayrı paragraf olarak ekle
+                    lines.forEach((line, lineIndex) => {
+                        const lineWords = line.split(' ');
+                        const lineDelay = lineIndex * 500; // Her satır için ek gecikme
 
-                    // Her kelime için harfleri tek tek ekle
-                    for (let i = 0; i < word.length; i++) {
-                        const charSpan = document.createElement('span');
-                        charSpan.className = 'magical-text';
-                        charSpan.textContent = word[i];
-                        charSpan.style.animationDelay = `${delay}ms`;
-                        wordSpan.appendChild(charSpan);
-                        delay += delayIncrement;
-                    }
+                        // Yeni paragraf oluştur
+                        const para = document.createElement('p');
+                        para.style.margin = '0 0 0.8em 0';
 
-                    container.appendChild(wordSpan);
+                        // Her kelimeyi işle
+                        displayWordsWithMagic(lineWords, para, delay + lineDelay);
 
-                    // Her kelimeden sonra bir boşluk ekle (son kelime hariç)
-                    if (wordIndex < words.length - 1) {
-                        const spaceSpan = document.createElement('span');
-                        spaceSpan.style.display = 'inline-block';
-                        spaceSpan.innerHTML = '&nbsp;';
-                        container.appendChild(spaceSpan);
-                    }
-                });
+                        container.appendChild(para);
+                        delay += lineWords.length * delayIncrement + 300; // Sonraki satır için ek gecikme
+                    });
+                } else {
+                    // Tek satır metin için normal işlem
+                    displayWordsWithMagic(words, container, delay);
+                }
+
+                // Büyülü efektlerle kelimeleri gösterme yardımcı fonksiyonu
+                function displayWordsWithMagic(words, parentElement, startDelay) {
+                    let currentDelay = startDelay;
+
+                    words.forEach((word, wordIndex) => {
+                        const wordSpan = document.createElement('span');
+                        wordSpan.style.display = 'inline-block';
+                        wordSpan.style.marginRight = '0.3em';
+
+                        // Rastgele renk tonu seçimi için değerler
+                        const hueValue = 280 + Math.floor(Math.random() * 40); // Mor tonları (280-320)
+
+                        // Her kelime için harfleri tek tek ekle
+                        for (let i = 0; i < word.length; i++) {
+                            const charSpan = document.createElement('span');
+                            charSpan.className = 'magical-text';
+                            charSpan.textContent = word[i];
+                            charSpan.style.animationDelay = `${currentDelay}ms`;
+                            charSpan.style.setProperty('--delay', `${currentDelay}ms`);
+
+                            // Özel karakterlere farklı renkler
+                            if (word[i].match(/[!.?:;]/)) {
+                                charSpan.style.color = `hsl(${hueValue}, 100%, 80%)`;
+                                charSpan.style.textShadow = `0 0 10px hsla(${hueValue}, 100%, 60%, 0.8)`;
+                            }
+
+                            wordSpan.appendChild(charSpan);
+                            currentDelay += delayIncrement;
+                        }
+
+                        parentElement.appendChild(wordSpan);
+
+                        // Her kelimeden sonra bir boşluk ekle (son kelime hariç)
+                        if (wordIndex < words.length - 1) {
+                            const spaceSpan = document.createElement('span');
+                            spaceSpan.style.display = 'inline-block';
+                            spaceSpan.innerHTML = '&nbsp;';
+                            parentElement.appendChild(spaceSpan);
+                        }
+                    });
+
+                    return currentDelay;
+                }
             }
 
             // Parlayan yıldızlar oluştur
