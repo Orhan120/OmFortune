@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmFortune Admin Panel</title>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #1a237e, #311b92);
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .admin-dashboard {
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #e0f7fa;
+            font-size: 2.2rem;
+            margin-top: 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background-color: rgba(156, 39, 176, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            width: 200px;
+            margin: 10px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            background-color: rgba(103, 58, 183, 0.5);
+            font-weight: bold;
+        }
+        
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #9c27b0, #673ab7);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #aa2bc2, #7e57c2);
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-dashboard">
+        <h1>OmFortune Yönetici Paneli</h1>
+        
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-number" id="visitorCount">0</div>
+                <div class="stat-label">Toplam Ziyaretçi</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="fortuneCount">0</div>
+                <div class="stat-label">Bakılan Fal</div>
+            </div>
+        </div>
+        
+        <h2>Fal Geçmişi</h2>
+        <table id="fortuneLogTable">
+            <tr>
+                <th>Tarih</th>
+                <th>İsim</th>
+                <th>Burç</th>
+                <th>Fal Metni</th>
+            </tr>
+            <!-- JavaScript ile doldurulacak -->
+        </table>
+        
+        <div class="button-container">
+            <button id="logoutButton">Çıkış Yap</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
