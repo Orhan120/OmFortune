@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fal Bakıcı</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214107660665483"
-     crossorigin="anonymous"></script>
-    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js"></script>
-    <script>(function(d){let s=d.createElement('script');s.async=true;s.src='https://puabvo.com/code/native.js?h=waWQiOjExOTc0ODYsInNpZCI6MTQ1NDczMiwid2lkIjo3MDUwMjEsInNyYyI6Mn0=eyJ';d.head.appendChild(s);})(document);</script>
-    <script>(function(d){let s=d.createElement('script');s.async=true;s.src='https://zonxso.com/code/pops.js?h=waWQiOjExOTc0ODYsInNpZCI6MTQ1NDczMiwid2lkIjo3MDUxMzMsInNyYyI6Mn0=eyJ';d.head.appendChild(s);})(document);</script>
-    <script>(function(d,a,b){let s=d.createElement('script');s.async=true;s.src='https://zonxso.com/code/pops.js?h=waWQiOjExOTc0ODYsInNpZCI6MTQ1NDczMiwid2lkIjo3MDUxMzMsInNyYyI6Mn0=eyJ&si1='+a+'&si2='+b;d.head.appendChild(s);})(document,'subid1','subid2');</script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Satisfy&display=swap');
 
@@ -740,9 +735,7 @@
     </style>
 </head>
 <body>
-    <amp-auto-ads type="adsense"
-        data-ad-client="ca-pub-7214107660665483">
-    </amp-auto-ads>
+    
 
     <div class="magic-elements">
         <div class="magic-circle"></div>
@@ -967,10 +960,8 @@
             <button id="newFortuneButton">Yeni Fal</button>
         </div>
     </div>
+
     
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background-color: rgba(0,0,0,0.7); padding: 10px; text-align: center; z-index: 1000;">
-        <a href="https://germov.com/ultra-fast-5g?h=waWQiOjExOTc0ODYsInNpZCI6MTQ1NDczMiwid2lkIjo3MDUxMzMsInNyYyI6Mn0=eyJ&si1=&si2=" style="color: white; text-decoration: none; font-size: 16px; display: block;">Ultra Hızlı 5G Keşfedin</a>
-    </div>
 
     <script>
         function createStars() {
@@ -1963,10 +1954,28 @@
             }
 
             document.getElementById('newFortuneButton').addEventListener('click', function() {
+                // Hide fortune section
                 fortuneSection.classList.remove('visible');
                 fortuneSection.classList.add('hidden');
-                horoscopeSection.classList.remove('hidden');
-                horoscopeSection.classList.add('visible');
+                
+                // Hide horoscope section if it's visible
+                horoscopeSection.classList.remove('visible');
+                horoscopeSection.classList.add('hidden');
+                
+                // Show the name input section (main screen)
+                nameSection.classList.remove('hidden');
+                nameSection.classList.add('visible');
+                
+                // Reset interstitial ad flag to show it again when user looks at a new fortune
+                interstitialAdShown = false;
+                
+                // Show interstitial ad when user clicks "Yeni Fal" button
+                showInterstitialAd();
+                
+                // Clear the input fields
+                document.getElementById('firstName').value = '';
+                document.getElementById('lastName').value = '';
+                document.getElementById('birthdate').value = '';
             });
 
             function displayMagicalText(text, container) {
@@ -2076,6 +2085,47 @@
                 }, 3000);
             }
 
+        });
+    </script>
+    
+    <!-- Adcash Advertising -->
+    <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+    <script>
+        // Flag to check if ad has already been shown in this session
+        let interstitialAdShown = false;
+        
+        // Function to show interstitial ad
+        function showInterstitialAd() {
+            try {
+                if (window.aclib && typeof window.aclib.runInterstitial === 'function') {
+                    interstitialAdShown = true;
+                    aclib.runInterstitial({
+                        zoneId: '9672550',
+                    });
+                } else {
+                    console.log("aclib library not loaded correctly");
+                }
+            } catch (e) {
+                console.error("Error showing interstitial ad:", e);
+            }
+        }
+        
+        // Show autoTag ads
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                if (window.aclib && typeof window.aclib.runAutoTag === 'function') {
+                    aclib.runAutoTag({zoneId: 'x5pexhhdjq'});
+                }
+            } catch (e) {
+                console.error("Error showing autoTag ad:", e);
+            }
+        });
+        
+        // Show interstitial ad on first page load
+        window.addEventListener('load', function() {
+            if (!interstitialAdShown) {
+                showInterstitialAd();
+            }
         });
     </script>
 </body>
