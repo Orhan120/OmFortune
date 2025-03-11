@@ -45,7 +45,7 @@ html {
 
 .action-button {
   background-color: transparent;
-  border: none;
+  border: none
   cursor: pointer;
   padding: 5px;
   border-radius: 50%;
