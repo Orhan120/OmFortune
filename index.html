@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fal Bakıcı</title>
     
+    <!-- Google AdSense Kodu -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214107660665483"
+     crossorigin="anonymous"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Satisfy&display=swap');
 
@@ -2088,45 +2092,6 @@
         });
     </script>
     
-    <!-- Adcash Advertising -->
-    <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
-    <script>
-        // Flag to check if ad has already been shown in this session
-        let interstitialAdShown = false;
-        
-        // Function to show interstitial ad
-        function showInterstitialAd() {
-            try {
-                if (window.aclib && typeof window.aclib.runInterstitial === 'function') {
-                    interstitialAdShown = true;
-                    aclib.runInterstitial({
-                        zoneId: '9672550',
-                    });
-                } else {
-                    console.log("aclib library not loaded correctly");
-                }
-            } catch (e) {
-                console.error("Error showing interstitial ad:", e);
-            }
-        }
-        
-        // Show autoTag ads
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                if (window.aclib && typeof window.aclib.runAutoTag === 'function') {
-                    aclib.runAutoTag({zoneId: 'x5pexhhdjq'});
-                }
-            } catch (e) {
-                console.error("Error showing autoTag ad:", e);
-            }
-        });
-        
-        // Show interstitial ad on first page load
-        window.addEventListener('load', function() {
-            if (!interstitialAdShown) {
-                showInterstitialAd();
-            }
-        });
-    </script>
+    <!-- Ad code removed -->
 </body>
 </html>
