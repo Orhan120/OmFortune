@@ -4,18 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fal Bakıcı</title>
-    
+
+    <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+    <script type="text/javascript">
+        aclib.runInterstitial({
+            zoneId: '9680346',
+        });
+    </script>
+
     <!-- Google AdSense Kodu -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214107660665483"
      crossorigin="anonymous"></script>
-    
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Satisfy&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700&family=Satisfy&family=Playfair+Display:wght@400;700&display=swap');
+
+        :root {
+            --primary-color: #9c27b0;
+            --secondary-color: #673ab7;
+            --accent-color: #e1bee7;
+            --dark-bg: #1a237e;
+            --darker-bg: #0d1442;
+            --text-color: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --animation-timing: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             font-family: 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a237e, #311b92);
-            color: white;
+            background: linear-gradient(135deg, var(--dark-bg), var(--darker-bg));
+            color: var(--text-color);
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -23,6 +47,21 @@
             justify-content: center;
             align-items: center;
             overflow-x: hidden;
+            position: relative;
+            background-attachment: fixed;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="20" height="20"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.05)"/></svg>');
+            pointer-events: none;
+            opacity: 0.5;
+            z-index: -1;
         }
 
         /* Fal seçenekleri için stil */
@@ -238,46 +277,68 @@
         }
 
         .container {
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 15px;
-            padding: 30px;
-            width: 80%;
-            max-width: 500px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
-                        0 0 40px rgba(156, 39, 176, 0.2),
-                        inset 0 0 15px rgba(156, 39, 176, 0.3);
+            background-color: rgba(15, 14, 31, 0.7);
+            border-radius: 20px;
+            padding: 40px;
+            width: 85%;
+            max-width: 550px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4),
+                        0 0 50px rgba(156, 39, 176, 0.2),
+                        inset 0 0 20px rgba(156, 39, 176, 0.25);
             text-align: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transform: scale(0.95);
+            transform: scale(0.95) translateY(30px);
             opacity: 0;
-            animation: containerAppear 1s forwards 0.2s;
+            animation: containerAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.3s;
             overflow: hidden;
             position: relative;
+            z-index: 5;
         }
 
-        /* Container için parlama efekti */
+        /* Container için gelişmiş parlama efekti */
         .container::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            top: -100%;
+            left: -100%;
+            width: 250%;
+            height: 250%;
+            background: radial-gradient(circle, rgba(180, 115, 220, 0.1) 0%, transparent 70%);
             opacity: 0;
-            animation: containerGlow 8s infinite;
+            animation: containerGlow 12s infinite;
             pointer-events: none;
+        }
+
+        .container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(var(--accent-color), 0.3), transparent);
+            opacity: 0.6;
         }
 
         @keyframes containerAppear {
             0% {
-                transform: scale(0.95);
+                transform: scale(0.95) translateY(30px);
                 opacity: 0;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2),
+                            0 0 20px rgba(156, 39, 176, 0.1),
+                            inset 0 0 10px rgba(156, 39, 176, 0.15);
+            }
+            70% {
+                transform: scale(1.02) translateY(-5px);
+                opacity: 1;
             }
             100% {
-                transform: scale(1);
+                transform: scale(1) translateY(0);
                 opacity: 1;
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4),
+                            0 0 50px rgba(156, 39, 176, 0.2),
+                            inset 0 0 20px rgba(156, 39, 176, 0.25);
             }
         }
 
@@ -286,80 +347,124 @@
                 transform: translate(-50%, -50%) rotate(0deg);
                 opacity: 0;
             }
+            30% {
+                opacity: 0.2;
+            }
             50% {
                 transform: translate(-50%, -50%) rotate(180deg);
-                opacity: 0.3;
+                opacity: 0.4;
+            }
+            70% {
+                opacity: 0.2;
             }
         }
 
-        /* Sihirli başlık animasyonu */
+        /* Gelişmiş başlık animasyonu */
         h1 {
-            margin-top: 0;
-            color: #e0f7fa;
-            font-size: 2.8rem;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-            font-family: 'Satisfy', cursive;
+            margin: 0 0 20px 0;
+            color: #ffffff;
+            font-size: 3.2rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 30px rgba(156, 39, 176, 0.3);
+            font-family: 'Playfair Display', 'Satisfy', cursive;
             position: relative;
             opacity: 0;
-            transform: translateY(-20px);
-            animation: titleAppear 1.5s forwards 0.5s, titleGlow 3s infinite 2s;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transform: translateY(-30px);
+            animation: 
+                titleAppear 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) forwards 0.7s, 
+                titleGlow 4s ease-in-out infinite 2.5s;
         }
 
         h1::before, h1::after {
             content: '';
             position: absolute;
-            width: 0;
             height: 3px;
-            bottom: -10px;
-            background: linear-gradient(to right, transparent, #e1bee7, transparent);
-            transition: width 0.8s ease;
+            bottom: -12px;
+            background: linear-gradient(to right, transparent, var(--accent-color), transparent);
             opacity: 0;
-            animation: lineExpand 1.2s forwards 1.8s;
+            transform-origin: center;
         }
 
         h1::before {
             left: 50%;
+            width: 0;
+            animation: lineExpandLeft 1.2s ease-out forwards 2s;
         }
 
         h1::after {
             right: 50%;
+            width: 0;
+            animation: lineExpandRight 1.2s ease-out forwards 2s;
+        }
+
+        h1 span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(20px) rotateX(45deg);
+            animation: charAppear 0.5s forwards;
+            animation-delay: calc(0.7s + (var(--char-index) * 0.1s));
         }
 
         @keyframes titleAppear {
             0% {
                 opacity: 0;
-                transform: translateY(-20px) scale(0.8);
-                text-shadow: 0 0 10px #9c27b0, 0 0 20px #9c27b0, 0 0 30px #9c27b0;
+                transform: translateY(-40px) scale(0.8);
+                text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color);
             }
-            70% {
-                opacity: 0.8;
-                transform: translateY(5px) scale(1.1);
-                text-shadow: 0 0 20px #9c27b0, 0 0 40px #9c27b0, 0 0 60px #e040fb;
+            60% {
+                opacity: 0.9;
+                transform: translateY(5px) scale(1.05);
+                text-shadow: 0 0 25px var(--primary-color), 0 0 45px var(--primary-color), 0 0 70px var(--secondary-color);
             }
             100% {
                 opacity: 1;
                 transform: translateY(0) scale(1);
-                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(156, 39, 176, 0.5);
+                text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 20px rgba(156, 39, 176, 0.4);
             }
         }
 
         @keyframes titleGlow {
             0%, 100% {
-                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(156, 39, 176, 0.5);
+                text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 15px rgba(156, 39, 176, 0.4);
+                letter-spacing: 1px;
             }
             50% {
-                text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 15px #9c27b0, 0 0 25px #e040fb;
+                text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 25px var(--primary-color), 0 0 35px var(--secondary-color);
+                letter-spacing: 1.5px;
             }
         }
 
-        @keyframes lineExpand {
+        @keyframes lineExpandLeft {
             0% {
                 width: 0;
                 opacity: 0;
             }
             100% {
                 width: 40%;
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes lineExpandRight {
+            0% {
+                width: 0;
+                opacity: 0;
+            }
+            100% {
+                width: 40%;
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes charAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) rotateX(45deg);
+            }
+            100% {
                 opacity: 1;
+                transform: translateY(0) rotateX(0);
             }
         }
 
@@ -367,41 +472,87 @@
             margin-bottom: 20px;
         }
 
+        .form-group {
+            position: relative;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            color: var(--accent-color);
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.6s forwards;
+            animation-delay: calc(1.2s + (var(--input-index) * 0.2s));
+        }
+
         input, button {
             width: 100%;
-            padding: 12px;
+            padding: 16px;
             margin-top: 8px;
-            border-radius: 12px;
+            border-radius: 14px;
             border: none;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+            font-size: 1.05rem;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            opacity: 0;
+            transform: translateY(15px);
+            animation: fadeInUp 0.7s forwards;
+            animation-delay: calc(1.5s + (var(--input-index) * 0.15s));
         }
 
         input {
-            background-color: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(156, 39, 176, 0.2);
             letter-spacing: 0.5px;
+            color: #333;
+            padding-left: 20px;
         }
 
         input:focus {
             outline: none;
-            box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-            border: 1px solid rgba(156, 39, 176, 0.5);
+            box-shadow: 0 6px 18px rgba(156, 39, 176, 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px) scale(1.02);
+            border: 1px solid rgba(156, 39, 176, 0.6);
+        }
+
+        input::placeholder {
+            color: #aaa;
+            font-size: 0.95rem;
         }
 
         button {
-            background: linear-gradient(135deg, #9c27b0, #673ab7);
+            background: linear-gradient(135deg, #b039cb, #7e57c2);
             color: white;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(103, 58, 183, 0.4);
+            font-weight: 600;
+            box-shadow: 0 6px 15px rgba(103, 58, 183, 0.4);
             position: relative;
             overflow: hidden;
             z-index: 1;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            border-radius: 16px;
+            margin-top: 15px;
+            transform-style: preserve-3d;
+            text-transform: uppercase;
+            font-size: 0.95rem;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         button::before {
@@ -411,15 +562,27 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             transition: left 0.7s ease;
             z-index: -1;
         }
 
+        button::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.1), transparent);
+            z-index: -2;
+        }
+
         button:hover {
-            background: linear-gradient(135deg, #aa2bc2, #7e57c2);
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(103, 58, 183, 0.6);
+            background: linear-gradient(135deg, #d033f1, #8e63df);
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 8px 25px rgba(103, 58, 183, 0.7);
+            letter-spacing: 2px;
         }
 
         button:hover::before {
@@ -427,8 +590,28 @@
         }
 
         button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 10px rgba(103, 58, 183, 0.4);
+            transform: translateY(-2px) scale(0.98);
+            box-shadow: 0 4px 12px rgba(103, 58, 183, 0.5);
+            background: linear-gradient(135deg, #a029b9, #7350b9);
+        }
+
+        button .button-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            background: transparent;
+            box-shadow: 0 0 20px 5px rgba(156, 39, 176, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -3;
+            pointer-events: none;
+        }
+
+        button:hover .button-glow {
+            opacity: 1;
         }
 
         #fingerprintButton {
@@ -436,72 +619,69 @@
             justify-content: center;
             align-items: center;
             margin: 20px auto 0;
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            transition: transform 0.3s ease;
+            background-color: rgba(156, 39, 176, 0.1);
+            border: 1px solid rgba(156, 39, 176, 0.3);
+            border-radius: 50%;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
             width: 100px;
             height: 100px;
             padding: 0;
             position: relative;
+            cursor: pointer;
         }
 
         #fingerprintButton:hover {
             transform: scale(1.05);
+            background-color: rgba(156, 39, 176, 0.2);
+            box-shadow: 0 5px 15px rgba(156, 39, 176, 0.4);
         }
 
         #fingerprintButton:active {
-            transform: scale(0.98);
+            transform: scale(0.95);
         }
 
         .fingerprint-icon {
-            width: 100px;
-            height: 100px;
-            filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3));
+            width: 60px;
+            height: 60px;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
         }
 
         #shareButton {
-            background: linear-gradient(145deg, #4caf50, #388e3c);
+            background: linear-gradient(145deg, #9c27b0, #7b1fa2);
             margin-top: 20px;
-            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
+            box-shadow: 0 4px 10px rgba(156, 39, 176, 0.3);
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
             transition: all 0.3s ease;
+            display: inline-block;
+            text-align: center;
         }
 
         #shareButton:hover {
-            background: linear-gradient(145deg, #5cb860, #43a047);
+            background: linear-gradient(145deg, #aa2cc0, #8e24aa);
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4);
+            box-shadow: 0 6px 12px rgba(156, 39, 176, 0.4);
         }
 
         #shareButton:active {
             transform: translateY(0);
         }
 
-        #shareButton:before {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z'/%3E%3C/svg%3E");
-            background-size: contain;
-            background-repeat: no-repeat;
-        }
-
         .loader {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             border: 3px solid transparent;
-            border-top-color: #9370DB;
-            border-bottom-color: #9370DB;
+            border-top-color: #9c27b0;
+            border-bottom-color: #9c27b0;
             position: absolute;
             display: none;
             animation: spin 1.5s linear infinite;
-            box-shadow: 0 0 20px rgba(147, 112, 219, 0.5);
         }
 
         .loader:before {
@@ -513,42 +693,27 @@
             bottom: 5px;
             border-radius: 50%;
             border: 3px solid transparent;
-            border-left-color: #BA55D3;
-            border-right-color: #BA55D3;
+            border-left-color: #ba68c8;
+            border-right-color: #ba68c8;
             animation: spin 2s linear infinite;
-        }
-
-        .loader:after {
-            content: "";
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            bottom: 15px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            border-top-color: #ffffff;
-            border-bottom-color: #ffffff;
-            animation: spin 1s linear infinite;
         }
 
         .scan-line {
             position: absolute;
-            width: 100px;
+            width: 80px;
             height: 2px;
-            background: linear-gradient(to right, transparent, #7B68EE, transparent);
+            background: linear-gradient(to right, transparent, #9c27b0, transparent);
             z-index: 1;
             top: 50%;
             transform: translateY(-50%);
             display: none;
-            animation: scan 2s ease-in-out infinite;
-            box-shadow: 0 0 10px 5px rgba(123, 104, 238, 0.5);
+            animation: scan 1.5s ease-in-out infinite;
         }
 
         @keyframes scan {
-            0% { top: 10%; opacity: 0.2; }
-            50% { top: 90%; opacity: 1; }
-            100% { top: 10%; opacity: 0.2; }
+            0% { top: 20%; opacity: 0.3; }
+            50% { top: 80%; opacity: 0.9; }
+            100% { top: 20%; opacity: 0.3; }
         }
 
         @keyframes spin {
@@ -736,10 +901,473 @@
                 opacity: 0;
             }
         }
+
+        /* Yeni stil eklemeleri - Gelişmiş animasyonlar */
+        .btn-text {
+            position: relative;
+            z-index: 2;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-icon {
+            position: relative;
+            z-index: 2;
+            margin-left: 10px;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+        }
+
+        button:hover .btn-text {
+            transform: translateX(-5px);
+        }
+
+        button:hover .btn-icon {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .input-highlight {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            transition: width 0.4s ease;
+            border-radius: 2px;
+        }
+
+        input:focus ~ .input-highlight {
+            width: 100%;
+        }
+
+        /* Gelişmiş kayan yıldızlar animasyonu */
+        .shooting-star {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(to right, 
+                rgba(255, 255, 255, 0), 
+                rgba(255, 255, 255, 0.4), 
+                rgba(255, 255, 255, 0.8), 
+                rgba(255, 255, 255, 1));
+            transform-origin: left;
+            animation: shooting 6s linear infinite;
+            opacity: 0;
+            border-radius: 100%;
+            box-shadow: 0 0 15px 2px rgba(255, 255, 255, 0.4);
+            z-index: 1;
+        }
+
+        /* Fal sonuç alanını geliştirme */
+        #fortuneResult {
+            background-color: rgba(30, 27, 58, 0.7);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), inset 0 2px 10px rgba(156, 39, 176, 0.2);
+            border: 1px solid rgba(156, 39, 176, 0.2);
+            line-height: 1.8;
+            text-align: left;
+            padding: 25px;
+            font-size: 1.1rem;
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 39, 176, 0.5) rgba(0, 0, 0, 0.2);
+        }
+
+        #fortuneResult::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #fortuneResult::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        #fortuneResult::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 39, 176, 0.5);
+            border-radius: 10px;
+        }
+
+        /* Fal bölümü geçiş animasyonları */
+        .fade-in-section {
+            animation: sectionFadeIn 1s cubic-bezier(0.39, 0.575, 0.565, 1) forwards;
+        }
+
+        @keyframes sectionFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Parmak izi butonu iyileştirmeleri */
+        #fingerprintButton {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(123, 104, 238, 0.3), rgba(25, 25, 37, 0.5));
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+                        inset 0 2px 10px rgba(156, 39, 176, 0.2),
+                        0 0 20px rgba(156, 39, 176, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #fingerprintButton:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
+                        inset 0 2px 10px rgba(156, 39, 176, 0.3),
+                        0 0 30px rgba(156, 39, 176, 0.4);
+        }
+
+        #fingerprintButton:active {
+            transform: scale(0.98);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 
+                        inset 0 2px 8px rgba(156, 39, 176, 0.2);
+        }
+
+        #fingerprintButton::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                transparent, 
+                rgba(156, 39, 176, 0.3), 
+                transparent, 
+                transparent
+            );
+            animation: rotateFingerprint 4s linear infinite;
+            z-index: 1;
+        }
+
+        #fingerprintButton::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            background: radial-gradient(circle, rgba(83, 51, 237, 0.2), rgba(25, 25, 37, 0.7));
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        @keyframes rotateFingerprint {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .scan-line {
+            height: 3px;
+            background: linear-gradient(to right, 
+                rgba(123, 104, 238, 0), 
+                rgba(123, 104, 238, 0.9), 
+                rgba(123, 104, 238, 0));
+            box-shadow: 0 0 15px 5px rgba(123, 104, 238, 0.7);
+            z-index: 5;
+            position: absolute;
+            animation: scanAnimation 2s ease-in-out infinite;
+            filter: blur(0.5px);
+        }
+        
+        /* Parmak izi tarama efektleri */
+        .fingerprint-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 4;
+            opacity: 0;
+            background-image: radial-gradient(
+                rgba(255, 255, 255, 0.9) 1px, 
+                transparent 1px
+            );
+            background-size: 6px 6px;
+            border-radius: 50%;
+            animation: fingerprint-dots-reveal 3s ease forwards;
+        }
+        
+        .fingerprint-match {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            z-index: 6;
+            pointer-events: none;
+            opacity: 0;
+            background: conic-gradient(
+                transparent,
+                rgba(86, 204, 242, 0.5),
+                rgba(111, 145, 255, 0.8),
+                rgba(156, 39, 176, 0.5),
+                transparent
+            );
+            transform: scale(0.9);
+        }
+        
+        #fingerprintButton.processing .fingerprint-match {
+            animation: fingerprint-match 1.5s ease-out forwards;
+        }
+        
+        @keyframes fingerprint-dots-reveal {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            20% {
+                opacity: 0.2;
+            }
+            80% {
+                opacity: 0.3;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes fingerprint-match {
+            0% {
+                opacity: 0;
+                transform: scale(0.9) rotate(0deg);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1) rotate(180deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.2) rotate(360deg);
+            }
+        }
+
+        @keyframes scanAnimation {
+            0% {
+                top: 10%;
+                opacity: 0.5;
+                height: 2px;
+                width: 80%;
+                left: 10%;
+            }
+            50% {
+                top: 90%;
+                opacity: 1;
+                height: 3px;
+                width: 90%;
+                left: 5%;
+                box-shadow: 0 0 20px 8px rgba(123, 104, 238, 0.8);
+            }
+            100% {
+                top: 10%;
+                opacity: 0.5;
+                height: 2px;
+                width: 80%;
+                left: 10%;
+            }
+        }
+
+        .loader {
+            border: 4px solid transparent;
+            border-top-color: #9370DB;
+            border-bottom-color: #9370DB;
+            box-shadow: 0 0 30px rgba(147, 112, 219, 0.7);
+            z-index: 4;
+        }
+
+        .loader:before {
+            border-left-color: #BA55D3;
+            border-right-color: #BA55D3;
+        }
+
+        .loader:after {
+            border-top-color: rgba(255, 255, 255, 0.8);
+            border-bottom-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        .fingerprint-icon {
+            z-index: 3;
+            position: relative;
+            filter: drop-shadow(0 0 8px rgba(156, 39, 176, 0.6));
+            transition: all 0.5s ease;
+        }
+
+        .fortune-symbol {
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+
+        .fortune-symbol::before, 
+        .fortune-symbol::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+
+        .fortune-symbol::before {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(156, 39, 176, 0.6), rgba(156, 39, 176, 0));
+            animation: symbolPulse 2s infinite;
+        }
+
+        .fortune-symbol::after {
+            width: 30px;
+            height: 30px;
+            background: rgba(224, 176, 255, 0.9);
+            box-shadow: 0 0 20px 10px rgba(156, 39, 176, 0.4);
+            animation: symbolGlow 2s infinite alternate;
+        }
+
+        @keyframes symbolPulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0.5;
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes symbolGlow {
+            0% { 
+                box-shadow: 0 0 15px 5px rgba(156, 39, 176, 0.4);
+                opacity: 0.7;
+            }
+            100% { 
+                box-shadow: 0 0 25px 10px rgba(156, 39, 176, 0.7);
+                opacity: 1;
+            }
+        }
+
+        /* Yeni yıldız animasyonu scripti */
+        .stars {
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 90%;
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            input, button {
+                padding: 14px;
+                font-size: 1rem;
+            }
+
+            .tarot-card {
+                width: 100px;
+                height: 160px;
+            }
+
+            #fortuneResult {
+                max-height: 300px;
+                font-size: 1rem;
+                padding: 15px;
+            }
+
+            .fortune-options {
+                flex-wrap: wrap;
+            }
+
+            .option-button {
+                width: 90px;
+                height: 90px;
+            }
+
+            .site-logo {
+                top: 10px;
+                left: 10px;
+                width: 40px;
+                height: 40px;
+            }
+
+            .logo-text {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                width: 95%;
+                padding: 25px 15px;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+                margin-bottom: 15px;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            input, button {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+
+            .tarot-card {
+                width: 80px;
+                height: 140px;
+            }
+
+            .option-button {
+                width: 80px;
+                height: 80px;
+            }
+
+            #fingerprintButton {
+                width: 80px;
+                height: 80px;
+            }
+
+            .fingerprint-icon {
+                width: 80px;
+                height: 80px;
+            }
+
+            .loader, .scan-line {
+                width: 80px;
+            }
+
+            #fortuneResult {
+                max-height: 250px;
+                font-size: 0.95rem;
+                padding: 12px;
+            }
+
+            button {
+                margin-top: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    
+
 
     <div class="magic-elements">
         <div class="magic-circle"></div>
@@ -883,6 +1511,7 @@
 
         @keyframes floatAndGlow {
             0%, 100% {
+
                 transform: translateY(0) rotate(0deg);
                 opacity: 0.4;
                 box-shadow: 0 0 20px rgba(224, 176, 255, 0.3);
@@ -915,26 +1544,50 @@
         <span class="logo-text">OM</span>
     </div>
     <div class="container">
-        <h1>OmFortune</h1>
+        <h1 id="animatedTitle"></h1>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const title = document.getElementById('animatedTitle');
+                const titleText = "OmFortune";
+
+                // Harfleri tek tek oluştur ve ekle
+                for (let i = 0; i < titleText.length; i++) {
+                    const span = document.createElement('span');
+                    span.textContent = titleText[i];
+                    span.style.setProperty('--char-index', i);
+                    title.appendChild(span);
+                }
+            });
+        </script>
 
         <div id="nameSection" class="visible">
-            <div class="form-group">
+            <div class="form-group" style="--input-index: 0;">
                 <label for="firstName">Adınızı Girin</label>
-                <input type="text" id="firstName" placeholder="Adınız" required>
+                <input type="text" id="firstName" placeholder="Adınızı yazın..." required>
+                <div class="input-highlight"></div>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="--input-index: 1;">
                 <label for="lastName">Soyadınızı Girin</label>
-                <input type="text" id="lastName" placeholder="Soyadınız" required>
+                <input type="text" id="lastName" placeholder="Soyadınızı yazın..." required>
+                <div class="input-highlight"></div>
             </div>
-            <button id="submitName">Devam Et</button>
+            <button id="submitName">
+                Devam Et
+                <span class="button-glow"></span>
+            </button>
         </div>
 
         <div id="birthdateSection" class="hidden">
-            <div class="form-group">
+            <div class="form-group" style="--input-index: 0;">
                 <label for="birthdate">Doğum Tarihinizi Girin</label>
                 <input type="date" id="birthdate" required>
+                <div class="input-highlight"></div>
             </div>
-            <button id="submitBirthdate">Kaderinizi Keşfedin</button>
+            <button id="submitBirthdate">
+                <span class="btn-text">Kaderinizi Keşfedin</span>
+                <span class="btn-icon">✨</span>
+                <span class="button-glow"></span>
+            </button>
         </div>
 
         <div id="horoscopeSection" class="hidden">
@@ -945,11 +1598,11 @@
             <p id="horoscopeText"></p>
             <div class="fortune-options">
                 <button id="fingerprintButton" class="option-button active" data-option="fingerprint">
-                    <svg class="option-icon fingerprint-icon" viewBox="0 0 24 24" fill="white">
-                        <path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.5 3.75-3.27C9.98 4.04 14 4.03 17.15 5.65c1.5.77 2.76 1.86 3.75 3.25.16.22.11.54-.12.7-.23.16-.54.11-.7-.12-.9-1.26-2.04-2.25-3.39-2.94-2.87-1.47-6.54-1.47-9.4.01-1.36.7-2.5 1.7-3.4 2.96-.08.14-.23.21-.39.21zm6.25 12.07c-.13 0-.26-.05-.35-.15-.87-.87-1.34-1.43-2.01-2.64-.69-1.23-1.05-2.73-1.05-4.34 0-2.97 2.54-5.39 5.66-5.39s5.66 2.42 5.66 5.39c0 .28-.22.5-.5.5s-.5-.22-.5-.5c0-2.42-2.09-4.39-4.66-4.39-2.57 0-4.66 1.97-4.66 4.39 0 1.44.32 2.77.93 3.85.64 1.15 1.08 1.64 1.85 2.42.19.2.19.51 0 .71-.11.1-.24.15-.37.15zm7.17-1.85c-1.19 0-2.24-.3-3.1-.89-1.49-1.01-2.38-2.65-2.38-4.39 0-.28.22-.5.5-.5s.5.22.5.5c0 1.41.72 2.74 1.94 3.56.71.48 1.54.71 2.54.71.24 0 .64-.03 1.04-.1.27-.05.53.13.58.41.05.27-.13.53-.41.58-.57.11-1.07.12-1.21.12zM14.91 22c-.04 0-.09-.01-.13-.02-1.59-.44-2.63-1.03-3.72-2.1-1.4-1.39-2.17-3.24-2.17-5.22 0-1.62 1.38-2.94 3.08-2.94 1.7 0 3.08 1.32 3.08 2.94 0 1.07.93 1.94 2.08 1.94s2.08-.87 2.08-1.94c0-3.77-3.25-6.83-7.25-6.83-2.84 0-5.44 1.58-6.61 4.03-.39.81-.59 1.76-.59 2.8 0 .78.07 2.01.67 3.61.1.26-.03.55-.29.64-.26.1-.55-.04-.64-.29-.49-1.31-.73-2.61-.73-3.96 0-1.2.23-2.29.68-3.24 1.33-2.79 4.28-4.6 7.51-4.6 4.55 0 8.25 3.51 8.25 7.83 0 1.62-1.38 2.94-3.08 2.94s-3.08-1.32-3.08-2.94c0-1.07-.93-1.94-2.08-1.94s-2.08.87-2.08 1.94c0 1.71.66 3.31 1.87 4.51.95.94 1.86 1.46 3.27 1.85.27.07.42.35.35.61-.05.23-.26.38-.47.38z"/>
+                    <svg class="option-icon fingerprint-icon" viewBox="0 0 512 512" fill="#9c27b0">
+                        <path d="M256 92.3c-74.2 0-127.8 55.3-136.3 64.7-4.5 5-4.4 12.4.2 17.2l20 20.9c4.6 4.8 12.1 5.1 16.9.5 7.3-7.1 40.1-33.3 99.2-33.3 59.1 0 92.1 26.3 99.2 33.3 4.8 4.6 12.3 4.3 16.9-.5l20-20.9c4.6-4.8 4.7-12.2.2-17.2-8.5-9.4-62.1-64.7-136.3-64.7zm-127.6 256c-3 0-5.8 1.7-7.2 4.4-9.2 18.4-14.3 38.5-14.3 59.3 0 62.7 45.9 114.9 106 124.5 1.6.3 3.2.5 4.8.5 5.3 0 10-3.5 11.4-8.8l3.4-12.5c1.6-6.1-1.9-12.4-8-14-44.3-12.1-75.6-52.4-75.6-99.7 0-14.9 3.6-27.8 10-42 2.3-5.1 1-11.1-3.3-14.7-2.6-2.2-5.8-3.5-9.2-3.5-6-.1-10.6-5-10.6-11v-6.9c0-6 4.6-10.8 10.6-10.8h6.7c6 0 10.7 4.8 10.7 10.8 0 5.5 3.9 10.8 9.5 11.7 6.7 1.1 13-3.5 14.1-10.1.7-4.4 3.5-9.2 8.2-9.2 5.5 0 9.5-4.7 9.5-10.2V144c0-5.5-4.1-10.2-9.5-10.2h-6.8c-5.5 0-9.5 4.7-9.5 10.2 0 5.5-3.9 10.1-9.4 10.1h-6.7c-18.6 0-32 14.3-32 32v64c.1 5.5-4.4 10.2-9.9 10.2zm256.3-200.7c-5.4 0-9.6 4.5-9.6 9.9v14.3c0 5.4 4.2 9.9 9.6 9.9h9.4c5.4 0 9.6-4.5 9.6-9.9v-14.3c0-5.4-4.2-9.9-9.6-9.9h-9.4zM408 147.6c0-11.5-9.4-20.8-20.9-20.8-4.2 0-8.4 1.3-11.9 3.9-25.6 18.7-51.7 38.2-77.5 57.5-4.8 3.6-6.2 10.6-2.6 15.4 2.6 3.5 7 5.2 11.2 4.1l.6-.2c23.2-7.8 43-7.7 56.5.5 13.6 8.2 19.5 24.2 15.9 43.8-1.4 7.5 1.5 14.4 7.7 18.4 4.4 2.8 10 3.9 15.2 2.1 4.7-1.6 9.4-7.4 9.4-13v-111.7h-3.6zm-32 0v84.2c-8.6-5.2-18.7-9.4-30.6-12.2 17.8-13.1 31.7-23.4 42.9-31.7-2-22.7-12.3-40.3-12.3-40.3zm8 200.8c0-5.7-4.3-10.4-9.9-10.9-26.7-2.4-52.6-13.7-74.9-32.7-4.4-3.7-10.2-4-14.6-.5-4.6 3.7-5.3 10.3-1.8 15 5.8 7.8 12.4 14.9 19.6 21.3-6.6 2.8-11.3 7.4-11.3 7.4-32.6 30.7-64.9 45.1-95.7 42.8-21.4-1.6-40.5-10.3-56.4-25.6-4.4-4.2-11.4-4.1-15.6.2l-8.6 8.9c-4.2 4.3-4.1 11.3.2 15.5 15.9 15.4 32.6 26.8 50.3 34.1-12.3 2.5-11.6 2.5-11.6 2.5-39.5 7.2-72.1-1.2-96.5-24.9-4.2-4.1-10.9-4-15 .2l-8.4 8.6c-4.2 4.3-4.1 11.2.2 15.4 32.2 31.2 72.9 45 119.7 41 0 0-.3 0 .3 0 16.7-1.1 32.9-4.2 48.5-9.3 44.5-14.6 83.4-47.3 117-96.2 5.3-7.5 15.6-14.8 30.6-24.9 2.5-1.7 3.9-4.5 3.9-7.5zm72.2-168.8c-1.4-2.1-3.8-3.4-6.4-3.4s-5 1.3-6.4 3.4l-9.7 14.5c-1.4 2.1-1.4 4.8 0 6.9l9.7 14.5c1.4 2.1 3.8 3.4 6.4 3.4s5-1.3 6.4-3.4l9.7-14.5c1.4-2.1 1.4-4.8 0-6.9l-9.7-14.5z"/>
                     </svg>
-                    <div class="loader" id="fingerprintLoader"></div>
-                    <div class="scan-line" id="scanLine"></div>
+                    <div id="fingerprintLoader" class="loader" style="display: none;"></div>
+                    <div id="scanLine" class="scan-line" style="display: none;"></div>
                 </button>
 
             </div>
@@ -961,11 +1614,19 @@
             <h2>Falınız Açıldı</h2>
             <div id="fortuneResult" class="fade-in"></div>
             <button id="shareButton">Bu Falı Paylaş</button>
-            <button id="newFortuneButton">Yeni Fal</button>
+            <button id="newFortuneButton" class`.new-fortune-button">
+                <span class="btn-text">Yeni Fal</span>
+                <span class="btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </span>
+                <span class="button-glow"></span>
+            </button>
         </div>
     </div>
 
-    
+
 
     <script>
         function createStars() {
@@ -1302,6 +1963,12 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             createStars();
+            enhanceSkyAnimations();
+
+            // DOM yüklendikten 500ms sonra fal sonuçları görsel iyileştirmelerini başlat
+            setTimeout(() => {
+                enhanceFortuneResults();
+            }, 500);
 
             document.getElementById('omFortuneLogoBtn').addEventListener('click', function() {
                 document.getElementById('fortuneSection').classList.remove('visible');
@@ -1961,21 +2628,21 @@
                 // Hide fortune section
                 fortuneSection.classList.remove('visible');
                 fortuneSection.classList.add('hidden');
-                
+
                 // Hide horoscope section if it's visible
                 horoscopeSection.classList.remove('visible');
                 horoscopeSection.classList.add('hidden');
-                
+
                 // Show the name input section (main screen)
                 nameSection.classList.remove('hidden');
                 nameSection.classList.add('visible');
-                
+
                 // Reset interstitial ad flag to show it again when user looks at a new fortune
                 interstitialAdShown = false;
-                
+
                 // Show interstitial ad when user clicks "Yeni Fal" button
                 showInterstitialAd();
-                
+
                 // Clear the input fields
                 document.getElementById('firstName').value = '';
                 document.getElementById('lastName').value = '';
@@ -2090,8 +2757,39 @@
             }
 
         });
+
+        function enhanceSkyAnimations() {
+            const stars = document.querySelectorAll('.star');
+            const shootingStars = document.querySelectorAll('.shooting-star');
+
+            stars.forEach(star => {
+                star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                star.style.animationDelay = `${Math.random() * 5}s`;
+            });
+
+            shootingStars.forEach(star => {
+                star.style.animationDuration = `${Math.random() * 4 + 2}s`;
+                star.style.animationDelay = `${Math.random() * 10}s`;
+            });
+        }
+
+        function enhanceFortuneResults() {
+            const fortuneResult = document.getElementById('fortuneResult');
+            if (fortuneResult) {
+                fortuneResult.classList.add('fade-in-section');
+                const magicalTexts = fortuneResult.querySelectorAll('.magical-text');
+                magicalTexts.forEach(text => {
+                    text.style.animationDuration = `${Math.random() * 0.5 + 0.3}s`;
+                    text.style.animationDelay = `${Math.random() * 0.5}s`;
+                });
+                const fortuneGlow = fortuneResult.querySelector('.fortune-glow');
+                if (fortuneGlow) {
+                    fortuneGlow.style.animationDuration = `${Math.random() * 2 + 3}s`;
+                }
+            }
+        }
     </script>
-    
+
     <!-- Ad code removed -->
 </body>
 </html>
