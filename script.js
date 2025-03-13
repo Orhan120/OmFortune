@@ -1,1877 +1,956 @@
-// Ziyaretçi sayacı ve fal kayıtları için veritabanı işlemleri
-document.addEventListener('DOMContentLoaded', function() {
-    // Ziyaretçi sayısını artır
-    incrementVisitorCount();
+// Zodiac sign names in Turkish
+const zodiacSigns = ["Koç", "Boğa", "İkizler", "Yengeç", "Aslan", "Başak", "Terazi", "Akrep", "Yay", "Oğlak", "Kova", "Balık"];
 
-    // Admin panel giriş kontrolü
+// Sayfa geçişleri için animasyon fonksiyonu
+function smoothPageTransition(currentPage, nextPage, direction = 'forward') {
+  if (!currentPage || !nextPage) return;
+
+  // Geçerli sayfayı gizle
+  currentPage.style.opacity = '0';
+  currentPage.style.transform = direction === 'forward' ? 'translateY(-20px)' : 'translateY(20px)';
+
+  // Kısa bir gecikme ile geçiş yap
+  setTimeout(() => {
+    currentPage.classList.remove('visible');
+    currentPage.classList.add('hidden');
+
+    // Yeni sayfayı hazırla
+    nextPage.style.opacity = '0';
+    nextPage.style.transform = direction === 'forward' ? 'translateY(20px)' : 'translateY(-20px)';
+    nextPage.classList.remove('hidden');
+    nextPage.classList.add('visible');
+
+    // Yeni sayfayı göster
+    setTimeout(() => {
+      nextPage.style.opacity = '1';
+      nextPage.style.transform = 'translateY(0)';
+
+      // Geçiş tamamlandıktan sonra stili temizle
+      setTimeout(() => {
+        nextPage.style.opacity = '';
+        nextPage.style.transform = '';
+        currentPage.style.opacity = '';
+        currentPage.style.transform = '';
+      }, 500);
+    }, 50);
+  }, 300);
+}
+
+// Elementi üzerinde parıltı efekti oluşturan fonksiyon
+function addGlowEffect(element, options = {}) {
+  if (!element) return;
+
+  const defaults = {
+    color: 'rgba(156, 39, 176, 0.5)',
+    duration: 2,
+    size: 30,
+    count: 3
+  };
+
+  const settings = {...defaults, ...options};
+
+  for (let i = 0; i < settings.count; i++) {
+    const glow = document.createElement('div');
+    glow.className = 'element-glow';
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      .element-glow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: ${settings.size}px;
+        height: ${settings.size}px;
+        border-radius: 50%;
+        background: ${settings.color};
+        opacity: 0;
+        filter: blur(${settings.size / 4}px);
+        animation: elemGlow ${settings.duration}s infinite ease-in-out ${i * (settings.duration / settings.count)}s;
+        pointer-events: none;
+      }
+
+      @keyframes elemGlow {
+        0%, 100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.8);
+        }
+        50% {
+          opacity: 0.8;
+          transform: translate(-50%, -50%) scale(1.2);
+        }
+      }
+    `;
+
+    document.head.appendChild(styleEl);
+
+    // Element pozisyonuna göre ayarla
+    const originalPosition = element.style.position;
+    if (originalPosition !== 'absolute' && originalPosition !== 'relative' && originalPosition !== 'fixed') {
+      element.style.position = 'relative';
+    }
+
+    element.appendChild(glow);
+  }
+
+  return {
+    remove: () => {
+      element.querySelectorAll('.element-glow').forEach(g => g.remove());
+    }
+  };
+}
+
+// Fal sonucunu backend'e gönderen fonksiyon
+function saveFortuneToServer(name, zodiac, fortune) {
+  // İstemci tarafında doğrulama yap
+  if (!name || !zodiac || !fortune) {
+    console.error('Fal kaydı için gerekli alanlar eksik');
+    return Promise.reject(new Error('Eksik veri'));
+  }
+
+  // Veriyi hazırla
+  const today = new Date();
+  const fortuneData = {
+    name: name.trim(),
+    zodiac: zodiac,
+    fortune: fortune,
+    date: today.toISOString().split('T')[0], // YYYY-MM-DD formatında tarih
+    timestamp: today.toISOString()
+  };
+
+  // Sunucuya gönder
+  console.log('Fal sunucuya gönderiliyor:', fortuneData);
+
+  console.log('Gönderilen veri:', JSON.stringify(fortuneData));
+  return fetch('/api/add-fortune', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(fortuneData)
+  })
+  .then(response => {
+    if (!response.ok) {
+      console.error('Server yanıtı:', response.status);
+      return response.text().then(text => {
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error('Server yanıtı başarısız: ' + response.status + ' - ' + (errorData.message || errorData.error || text));
+        } catch (e) {
+          throw new Error('Server yanıtı başarısız: ' + response.status + ' - ' + text);
+        }
+      });
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('Fal sunucuya kaydedildi:', data);
+
+    // Başarılı kayıt sonrası local storage'a da kaydedelim (yedek olarak)
+    try {
+      // Son 10 falı saklayalım
+      const savedFortunes = JSON.parse(localStorage.getItem('recentFortunes') || '[]');
+      savedFortunes.unshift(fortuneData);
+      // En fazla 10 kayıt tutalım
+      if (savedFortunes.length > 10) {
+        savedFortunes.pop();
+      }
+      localStorage.setItem('recentFortunes', JSON.stringify(savedFortunes));
+    } catch (e) {
+      console.warn('Local Storage kayıt hatası:', e);
+    }
+
+    return data;
+  })
+  .catch(error => {
+    console.error('Fal kaydı hatası:', error);
+
+    // Hata durumunda, daha sonra tekrar denenebilmesi için local storage'a geçici kaydet
+    try {
+      const pendingFortunes = JSON.parse(localStorage.getItem('pendingFortunes') || '[]');
+      pendingFortunes.push(fortuneData);
+      localStorage.setItem('pendingFortunes', JSON.stringify(pendingFortunes));
+      console.log('Fal geçici olarak kaydedildi, daha sonra tekrar denenecek');
+    } catch (e) {
+      console.error('Geçici kayıt hatası:', e);
+    }
+
+    throw error;
+  });
+}
+
+// Sunucudan son falları getirir
+function getLatestFortunes() {
+  return fetch('/api/admin/latest-readings')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Son fallar alınamadı: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Son fallar alındı:', data);
+      return data;
+    })
+    .catch(error => {
+      console.error('Son fallar alınamadı:', error);
+      // Hata durumunda local storage'dan alınan verileri döndür
+      const savedFortunes = JSON.parse(localStorage.getItem('recentFortunes') || '[]');
+      return savedFortunes;
+    });
+}
+
+// Sunucudan burç dağılımı istatistiklerini getirir
+function getZodiacDistribution() {
+  return fetch('/api/admin/zodiac-distribution')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Burç dağılımı alınamadı: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Burç dağılımı alındı:', data);
+      return data;
+    })
+    .catch(error => {
+      console.error('Burç dağılımı alınamadı:', error);
+      // Hata durumunda boş bir dağılım döndür
+      return {
+        zodiacSigns: zodiacSigns,
+        counts: Array(12).fill(0)
+      };
+    });
+}
+
+// Sayfa yüklendiğinde bekleyen fal kayıtlarını kontrol et ve tekrar göndermeyi dene
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    try {
+      const pendingFortunes = JSON.parse(localStorage.getItem('pendingFortunes') || '[]');
+      if (pendingFortunes.length > 0) {
+        console.log(`${pendingFortunes.length} bekleyen fal kaydı bulundu, gönderiliyor...`);
+
+        // Sırayla göndermeyi dene
+        const sendPendingFortune = (index) => {
+          if (index >= pendingFortunes.length) {
+            localStorage.removeItem('pendingFortunes');
+            return;
+          }
+
+          const fortune = pendingFortunes[index];
+          fetch('/api/add-fortune', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(fortune)
+          })
+          .then(response => {
+            if (response.ok) {
+              console.log(`Bekleyen fal #${index+1} başarıyla gönderildi`);
+              // Bir sonrakini gönder
+              sendPendingFortune(index + 1);
+            } else {
+              console.error(`Bekleyen fal #${index+1} gönderilemedi`);
+              // Bekleyen falları güncelle, başarısız olanları tut
+              localStorage.setItem('pendingFortunes', JSON.stringify(pendingFortunes.slice(index)));
+              throw new Error('Server error');
+            }
+          })
+          .catch(err => {
+            console.error('Bekleyen falları gönderme hatası:', err);
+          });
+        };
+
+        // İlk bekleyen falı göndermeyi başlat
+        sendPendingFortune(0);
+      }
+    } catch (e) {
+      console.error('Bekleyen falları işlerken hata:', e);
+    }
+  }, 3000); // 3 saniye gecikmeyle kontrol et
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // AdminLoginForm işlemleri
     const adminLoginForm = document.getElementById('adminLoginForm');
+
+// Gelişmiş kayan yıldız oluşturma fonksiyonu
+function createEnhancedShootingStar(container) {
+  const shootingStar = document.createElement('div');
+  shootingStar.classList.add('shooting-star');
+
+  // Rastgele pozisyon ve boyut
+  const startX = Math.random() * 30;
+  const startY = Math.random() * 60;
+  const width = Math.random() * 120 + 60;
+  const height = Math.random() * 1.5 + 1.5;
+  const angle = Math.random() * 20 - 10;
+
+  // Yıldızı yerleştir ve boyutlandır
+  shootingStar.style.left = `${startX}%`;
+  shootingStar.style.top = `${startY}%`;
+  shootingStar.style.width = `${width}px`;
+  shootingStar.style.height = `${height}px`;
+  shootingStar.style.transform = `rotate(${angle}deg)`;
+
+  // Rastgele renk efekti (mavi veya mor tonları)
+  if (Math.random() > 0.7) {
+    const hue = Math.floor(Math.random() * 60) + 200;
+    shootingStar.style.background = `linear-gradient(to right, 
+      rgba(255, 255, 255, 0), 
+      hsla(${hue}, 80%, 70%, 0.4), 
+      hsla(${hue}, 80%, 80%, 0.8), 
+      hsla(${hue}, 80%, 90%, 1))`;
+
+    shootingStar.style.boxShadow = `0 0 15px hsla(${hue}, 80%, 70%, 0.7),
+                                    0 0 30px hsla(${hue}, 80%, 70%, 0.3)`;
+  }
+
+  // Animasyon süresi ve gecikmesi
+  const duration = Math.random() * 2 + 1.5;
+  const delay = Math.random() * 5;
+
+  shootingStar.style.animationDuration = `${duration}s`;
+  shootingStar.style.animationDelay = `${delay}s`;
+
+  container.appendChild(shootingStar);
+
+  // Animasyon bittiğinde elementi sil
+  setTimeout(() => {
+    shootingStar.remove();
+  }, (duration + delay) * 1000);
+
+  // Yıldız kuyruğu efekti ekle
+  setTimeout(() => {
+    if (!shootingStar.isConnected) return;
+
+    const starTrail = document.createElement('div');
+    starTrail.className = 'star-trail';
+    starTrail.style.position = 'absolute';
+    starTrail.style.left = `${startX + 5}%`;
+    starTrail.style.top = `${startY + 0.5}%`;
+    starTrail.style.width = `${width * 0.8}px`;
+    starTrail.style.height = `${height * 0.7}px`;
+    starTrail.style.transform = `rotate(${angle}deg)`;
+    starTrail.style.background = 'linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2))';
+    starTrail.style.borderRadius = '50%';
+    starTrail.style.filter = 'blur(3px)';
+    starTrail.style.opacity = '0.5';
+    starTrail.style.animation = `shooting ${duration * 0.9}s linear forwards ${delay + duration * 0.1}s`;
+
+    container.appendChild(starTrail);
+
+    setTimeout(() => {
+      starTrail.remove();
+    }, (duration + delay) * 1000);
+  }, delay * 1000 + 100);
+}
+
+// Yeni gökyüzü animasyonları
+function enhanceSkyAnimations() {
+  // Gökyüzü renk değişimleri
+  const skyColorAnimation = document.createElement('div');
+  skyColorAnimation.className = 'sky-color-animation';
+  skyColorAnimation.style.position = 'fixed';
+  skyColorAnimation.style.top = '0';
+  skyColorAnimation.style.left = '0';
+  skyColorAnimation.style.width = '100%';
+  skyColorAnimation.style.height = '100%';
+  skyColorAnimation.style.pointerEvents = 'none';
+  skyColorAnimation.style.zIndex = '-2';
+  skyColorAnimation.style.opacity = '0.3';
+  skyColorAnimation.style.animation = 'skyColorChange 120s infinite';
+
+  document.body.appendChild(skyColorAnimation);
+
+  // Animasyon için stil ekle
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    @keyframes skyColorChange {
+      0%, 100% {
+        background: radial-gradient(circle at top right, rgba(83, 51, 237, 0.2), transparent 60%);
+      }
+      25% {
+        background: radial-gradient(circle at top left, rgba(123, 31, 162, 0.2), transparent 60%);
+      }
+      50% {
+        background: radial-gradient(circle at bottom right, rgba(74, 20, 140, 0.2), transparent 60%);
+      }
+      75% {
+        background: radial-gradient(circle at bottom left, rgba(49, 27, 146, 0.2), transparent 60%);
+      }
+    }
+
+    .star-trail {
+      position: absolute;
+      pointer-events: none;
+      z-index: 0;
+    }
+  `;
+
+  document.head.appendChild(styleEl);
+}
+
+// Fal sonuçları için görsel iyileştirmeler
+function enhanceFortuneResults() {
+  // Bazı fal sembollerini rastgele arka plana ekle
+  const fortuneContainer = document.getElementById('fortuneResult');
+  if (!fortuneContainer) return;
+
+  const symbols = ['✧', '☽', '☆', '✦', '⋆', '⊹', '✵', '⁕'];
+
+  for (let i = 0; i < 10; i++) {
+    const symbol = document.createElement('span');
+    symbol.className = 'fortune-symbol';
+    symbol.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+
+    symbol.style.position = 'absolute';
+    symbol.style.fontSize = `${Math.random() * 14 + 8}px`;
+    symbol.style.opacity = '0.2';
+    symbol.style.color = 'rgba(255, 255, 255, 0.5)';
+    symbol.style.zIndex = '1';
+    symbol.style.userSelect = 'none';
+    symbol.style.pointerEvents = 'none';
+
+    // Rastgele pozisyon
+    symbol.style.top = `${Math.random() * 100}%`;
+    symbol.style.left = `${Math.random() * 100}%`;
+
+    // Animasyon
+    symbol.style.animation = `symbol-twinkle ${Math.random() * 3 + 3}s infinite ease-in-out ${Math.random() * 3}s`;
+
+    fortuneContainer.appendChild(symbol);
+  }
+
+  // Sembol animasyonu için stil ekle
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    @keyframes symbol-twinkle {
+      0%, 100% {
+        opacity: 0.1;
+        transform: scale(0.8) rotate(0deg);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(1.2) rotate(10deg);
+      }
+    }
+  `;
+
+  document.head.appendChild(styleEl);
+}
+
+
     if (adminLoginForm) {
         adminLoginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const password = document.getElementById('adminPassword').value;
-            const button = this.querySelector('button');
 
-            // Giriş yapıyor animasyonu
-            button.innerHTML = '<div class="spinner"></div> Giriş Yapılıyor...';
-            button.disabled = true;
+            // Basit şifre kontrolü (gerçek uygulamada daha güvenli bir yöntem kullanılmalıdır)
+            if (password === "admin123") {
+                localStorage.setItem('adminLoggedIn', 'true');
+                localStorage.setItem('adminAuthTime', Date.now());
+                showNotification('success', 'Başarılı!', 'Giriş yapılıyor...');
 
-            setTimeout(() => {
-                checkAdminPassword(password);
-            }, 1000);
+                setTimeout(() => {
+                    window.location.href = 'admin-dashboard.html';
+                }, 1000);
+            } else {
+                document.querySelector('.login-container').classList.add('shake-animation');
+                showNotification('error', 'Hata!', 'Geçersiz şifre girdiniz.');
+
+                setTimeout(() => {
+                    document.querySelector('.login-container').classList.remove('shake-animation');
+                }, 500);
+            }
         });
     }
 
-    // Admin panelinde falları gösterme
-    if (document.getElementById('fortuneLogTable')) {
-        // Admin giriş kontrolü
+    // Admin sayfasındaysa ve giriş yapmamışsa, login sayfasına yönlendir
+    if (window.location.pathname.includes('admin-dashboard.html')) {
         if (localStorage.getItem('adminLoggedIn') !== 'true') {
             window.location.href = 'admin.html';
-            return;
-        }
-
-        // Tarih ve saat göster
-        updateDateTime();
-        setInterval(updateDateTime, 60000); // Her dakika güncelle
-
-        loadFortuneLogs();
-
-        // Arama işlevi
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                filterFortuneLogs(this.value);
-            });
-        }
-
-        // Verileri dışa aktarma
-        const exportButton = document.getElementById('exportButton');
-        if (exportButton) {
-            exportButton.addEventListener('click', exportFortuneData);
+        } else {
+            // Admin dashboardu yüklenmişse ve giriş yapılmışsa, gerçek verileri çek
+            initAdminDashboard(); //Call initAdminDashboard instead of loadAdminDashboardData
         }
     }
 
-    // Çıkış butonu
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', function() {
-            this.innerHTML = '<div class="spinner"></div> Çıkış Yapılıyor...';
-            this.disabled = true;
-
-            setTimeout(() => {
-                localStorage.removeItem('adminLoggedIn');
-                window.location.href = 'admin.html';
-            }, 800);
-        });
-    }
-
-    // Tarih ve saati güncelleme
-    function updateDateTime() {
-        const dateTimeElement = document.getElementById('currentDateTime');
-        if (dateTimeElement) {
-            const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            dateTimeElement.textContent = now.toLocaleDateString('tr-TR', options);
-        }
-    }
-
-    // Fal kayıtlarını filtreleme
-    function filterFortuneLogs(searchText) {
-        const fortuneLogTable = document.getElementById('fortuneLogTable');
-        const rows = fortuneLogTable.getElementsByTagName('tr');
-
-        // İlk satır başlık satırı olduğu için 1'den başla
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const text = row.textContent.toLowerCase();
-
-            if (text.includes(searchText.toLowerCase())) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
-    }
-
-    // Verileri CSV olarak dışa aktarma
-    function exportFortuneData() {
-        let fortuneLogs = JSON.parse(localStorage.getItem('fortuneLogs') || '[]');
-
-        if (fortuneLogs.length === 0) {
-            alert('Dışa aktarılacak veri bulunamadı.');
-            return;
-        }
-
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Tarih,İsim,Burç,Fal Metni\n";
-
-        fortuneLogs.forEach(log => {
-            csvContent += `${log.date},${log.name},${log.zodiac},"${log.fortune.replace(/"/g, '""')}"\n`;
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `OmFortune_Fallar_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-});
-
-// Ziyaretçi sayısını artırma fonksiyonu
-function incrementVisitorCount() {
-    let visitorCount = localStorage.getItem('visitorCount') || 0;
-    visitorCount = parseInt(visitorCount) + 1;
-    localStorage.setItem('visitorCount', visitorCount);
-
-    // Bu bilgiyi gerçek zamanlı veritabanına kaydetmek için istek gönderilebilir
-    // Bu örnekte localStorage kullanıyoruz ama ileride Firebase veya başka bir veritabanı eklenebilir
-}
-
-// Fal sonucunu kaydetme
-function saveFortune(userName, userZodiac, fortuneText, birthDate = '') {
-    // Debug için konsola verileri yazdır (hem geliştirme hem gerçek ortamda)
-    console.log("Kullanıcı:", userName);
-    console.log("Burç:", userZodiac);
-    console.log("Fal:", fortuneText);
-
-    try {
-        // Cihaz bilgilerini al
-        const deviceInfo = getDeviceInfo();
-
-        // Oturum süresini hesapla
-        const sessionDuration = Math.floor((Date.now() - (window.sessionStartTime || Date.now())) / 1000);
-
-        // Backend API'ye kaydet
-        fetch('/api/fortunes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: userName,
-                zodiac: userZodiac,
-                fortune: fortuneText,
-                birthDate: birthDate,
-                deviceInfo: deviceInfo,
-                sessionDuration: sessionDuration
+    // Ana sayfada popüler burçları ve son falları göster
+    if (window.location.pathname === '/' || window.location.pathname.includes('index.html')) {
+        // Burç dağılımını al ve göster
+        getZodiacDistribution()
+            .then(data => {
+                // En popüler burcun indeksini bul
+                const maxIndex = data.counts.indexOf(Math.max(...data.counts));
+                if (maxIndex !== -1) {
+                    console.log('En popüler burç:', data.zodiacSigns[maxIndex]);
+                    // İsterseniz bu bilgiyi ana sayfada gösterebilirsiniz
+                }
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Fal başarıyla veritabanına kaydedildi:", data);
-
-            // Lokalede de saklayalım (yedek olarak)
-            saveFortuneToLocalStorage(userName, userZodiac, fortuneText, birthDate, deviceInfo, sessionDuration, data.id, data.date);
-        })
-        .catch(error => {
-            console.error("API hatası, lokalede saklayalım:", error);
-            // API başarısız olursa, verileri lokalede sakla
-            saveFortuneToLocalStorage(userName, userZodiac, fortuneText, birthDate, deviceInfo, sessionDuration);
-        });
-
-        return true;
-    } catch (error) {
-        console.error("Fal kaydedilirken hata oluştu:", error);
-
-        // Hataya rağmen verileri kurtarmak için yeni bir deneme yap
-        try {
-            const backupName = "fortuneLogs_backup_" + Date.now();
-            localStorage.setItem(backupName, JSON.stringify([{
-                date: new Date().toISOString(),
-                name: userName,
-                zodiac: userZodiac,
-                fortune: fortuneText,
-                recoveryBackup: true
-            }]));
-            console.log("Yedek kayıt oluşturuldu:", backupName);
-        } catch (backupError) {
-            console.error("Yedek kayıt oluşturulurken hata:", backupError);
-        }
-
-        return false;
+            .catch(error => {
+                console.error('Burç istatistikleri alınamadı:', error);
+            });
     }
-}
-
-// LocalStorage'a fal kaydetme yardımcı fonksiyonu
-function saveFortuneToLocalStorage(userName, userZodiac, fortuneText, birthDate, deviceInfo, sessionDuration, id = null, apiDate = null) {
-    try {
-        let fortuneLogs = [];
-        try {
-            // localStorage'dan mevcut falları al
-            const existingData = localStorage.getItem('fortuneLogs');
-
-            fortuneLogs = JSON.parse(existingData || '[]');
-            if (!Array.isArray(fortuneLogs)) {
-                console.error("fortuneLogs bir dizi değil, sıfırlanıyor:", fortuneLogs);
-                fortuneLogs = [];
-            }
-        } catch (e) {
-            console.error("fortuneLogs parse edilirken hata oluştu, sıfırlanıyor:", e);
-            fortuneLogs = [];
-        }
-
-        let dailyStats = {};
-        try {
-            dailyStats = JSON.parse(localStorage.getItem('dailyStats') || '{}');
-            if (typeof dailyStats !== 'object') {
-                console.error("dailyStats bir obje değil, sıfırlanıyor:", dailyStats);
-                dailyStats = {};
-            }
-        } catch (e) {
-            console.error("dailyStats parse edilirken hata oluştu, sıfırlanıyor:", e);
-            dailyStats = {};
-        }
-
-        // Günlük istatistikler için bugünün tarihini al
-        const today = new Date().toISOString().split('T')[0];
-
-        // Bugün için istatistikler yoksa oluştur
-        if (!dailyStats[today]) {
-            dailyStats[today] = {
-                visitors: 0,
-                fortunes: 0,
-                zodiacCounts: {},
-                deviceCounts: {},
-                hourlyStats: Array(24).fill(0)
-            };
-        }
-
-        // Günlük fal sayısını artır
-        dailyStats[today].fortunes++;
-
-        // Burç istatistiklerini güncelle
-        const zodiac = userZodiac || 'Belirtilmemiş';
-        dailyStats[today].zodiacCounts[zodiac] = (dailyStats[today].zodiacCounts[zodiac] || 0) + 1;
-
-        // Saatlik istatistikleri güncelle
-        const currentHour = new Date().getHours();
-        dailyStats[today].hourlyStats[currentHour]++;
-
-        // Cihaz istatistiklerini güncelle
-        const deviceType = deviceInfo.isMobile ? 'Mobil' : 'Masaüstü';
-        dailyStats[today].deviceCounts[deviceType] = (dailyStats[today].deviceCounts[deviceType] || 0) + 1;
-
-        // Yeni fal kaydını oluştur
-        const date = apiDate || new Date().toISOString();
-        const newFortune = {
-            id: id || Date.now(),
-            date: date,
-            localDate: new Date(date).toLocaleString('tr-TR'),
-            name: userName,
-            birthDate: birthDate,
-            zodiac: userZodiac,
-            fortune: fortuneText,
-            fortuneLength: fortuneText.length,
-            deviceInfo: deviceInfo,
-            phoneModel: deviceInfo.phoneModel,
-            browser: deviceInfo.browser,
-            os: deviceInfo.os,
-            screenSize: `${deviceInfo.screenWidth}x${deviceInfo.screenHeight}`,
-            isMobile: deviceInfo.isMobile,
-            sessionDuration: sessionDuration
-        };
-
-        // Veri limitini aşmamak için en eski kayıtları sil (eğer çok fazla kayıt varsa)
-        const MAX_RECORDS = 5000;
-        if (fortuneLogs.length > MAX_RECORDS) {
-            fortuneLogs = fortuneLogs.slice(-MAX_RECORDS);
-        }
-
-        // Yeni fal kaydını ekle
-        fortuneLogs.push(newFortune);
-
-        // Tarihe göre sırala (en yeniler en üstte)
-        fortuneLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // localStorage'a veriyi yazmadan önce kontrol et
-        try {
-            localStorage.setItem('fortuneLogs', JSON.stringify(fortuneLogs));
-        } catch (error) {
-            console.error("localStorage'a veri yazılırken hata:", error);
-        }
-
-        localStorage.setItem('dailyStats', JSON.stringify(dailyStats));
-
-        // Ziyaretçi sayacını güncelle ve API'ye bildir
-        updateVisitorCount();
-
-        // Admin paneli açıksa verileri otomatik güncelle
-        triggerAdminPanelUpdate(newFortune);
-
-    } catch (error) {
-        console.error("Lokal depolama hatası:", error);
-    }
-}
-
-// Ziyaretçi sayısını artırma fonksiyonu
-function updateVisitorCount() {
-    // Önce lokalede güncelle
-    let visitorCount = localStorage.getItem('visitorCount') || 0;
-    visitorCount = parseInt(visitorCount) + 1;
-    localStorage.setItem('visitorCount', visitorCount);
-
-    // API'ye de bildir
-    fetch('/api/visitors', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => console.log("Ziyaretçi kaydı güncellendi:", data))
-    .catch(err => console.error("Ziyaretçi kaydı güncellenirken hata:", err));
-}
-
-// Admin paneline otomatik güncelleme sinyali gönderme
-function triggerAdminPanelUpdate(newFortune) {
-    console.log("Admin paneline güncelleme sinyali gönderiliyor:", newFortune);
-
-    // CustomEvent kullanarak admin paneline veri ekleme sinyali gönder
-    const updateEvent = new CustomEvent('fortuneDataUpdated', { 
-        detail: { 
-            fortune: newFortune,
-            timestamp: Date.now() 
-        } 
-    });
-
-    // Event'i window objesine yayınla
-    window.dispatchEvent(updateEvent);
-
-    // Admin paneli açıksa ve farklı bir pencere/tab'daysa
-    // localStorage üzerinden sinyal gönder
-    try {
-        // Sinyal olarak kullanmak için lastFortuneUpdate
-        localStorage.setItem('lastFortuneUpdate', JSON.stringify({
-            fortune: newFortune,
-            timestamp: Date.now()
-        }));
-
-        // Yeni falı doğrudan fortuneLogs'a ekle
-        let fortuneLogs = JSON.parse(localStorage.getItem('fortuneLogs') || '[]');
-        if (!Array.isArray(fortuneLogs)) fortuneLogs = [];
-
-        // Eğer bu kayıt zaten yoksa ekle (id ile kontrol)
-        if (!fortuneLogs.some(log => log.id === newFortune.id)) {
-            fortuneLogs.push(newFortune);
-
-            // Tarihe göre sırala (en yeniler en üstte)
-            fortuneLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            localStorage.setItem('fortuneLogs', JSON.stringify(fortuneLogs));
-            console.log("Yeni fal kaydı localStorage'a eklendi:", newFortune.name);
-        }
-    } catch (e) {
-        console.error("Admin paneli güncelleme sinyali gönderilemedi:", e);
-    }
-}
-
-// Sayfa yüklendiğinde oturum başlangıç zamanını kaydet
-document.addEventListener('DOMContentLoaded', function() {
-    window.sessionStartTime = Date.now();
 });
 
-// Cihaz bilgilerini tespit etme
-function getDeviceInfo() {
-    const userAgent = navigator.userAgent;
-
-    // İşletim sistemi tespiti
-    let os = "Bilinmiyor";
-    if (/Windows/i.test(userAgent)) os = "Windows";
-    else if (/Macintosh|Mac OS X/i.test(userAgent)) os = "MacOS";
-    else if (/Android/i.test(userAgent)) os = "Android";
-    else if (/iPhone|iPad|iPod/i.test(userAgent)) os = "iOS";
-    else if (/Linux/i.test(userAgent)) os = "Linux";
-
-    // Tarayıcı tespiti
-    let browser = "Bilinmiyor";
-    if (/Edge/i.test(userAgent)) browser = "Edge";
-    else if (/Chrome/i.test(userAgent)) browser = "Chrome";
-    else if (/Firefox/i.test(userAgent)) browser = "Firefox";
-    else if (/Safari/i.test(userAgent)) browser = "Safari";
-    else if (/Opera|OPR/i.test(userAgent)) browser = "Opera";
-    else if (/MSIE|Trident/i.test(userAgent)) browser = "Internet Explorer";
-
-    // Telefon modeli tespiti
-    let phoneModel = "Bilinmiyor";
-
-    // iPhone model tespiti
-    if (/iPhone/i.test(userAgent)) {
-        const iPhoneMatch = userAgent.match(/iPhone\s*(?:OS\s*)?(\d+)?(?:_\d+)?/i);
-        if (iPhoneMatch) {
-            phoneModel = "iPhone " + (iPhoneMatch[1] || "");
-        } else {
-            phoneModel = "iPhone";
-        }
-    } 
-    // Android model tespiti
-    else if (/Android/i.test(userAgent)) {
-        const matches = userAgent.match(/Android\s([0-9.]+);\s*([^;)]+)(?:[;)])/);
-        if (matches && matches.length > 2) {
-            phoneModel = matches[2].trim();
-        } else {
-            phoneModel = "Android Cihaz";
-        }
-    }
-    // Diğer mobil cihazlar
-    else if (/iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
-        if (/iPad/i.test(userAgent)) phoneModel = "iPad";
-        else if (/iPod/i.test(userAgent)) phoneModel = "iPod";
-        else if (/BlackBerry/i.test(userAgent)) phoneModel = "BlackBerry";
-        else if (/IEMobile/i.test(userAgent)) phoneModel = "Windows Phone";
-        else if (/Opera Mini/i.test(userAgent)) phoneModel = "Opera Phone";
-    } 
-    // Mobil cihaz değilse
-    else {
-        phoneModel = "Masaüstü Cihaz";
-    }
-
-    return {
-        userAgent: userAgent,
-        os: os,
-        browser: browser,
-        phoneModel: phoneModel,
-        isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent),
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height
-    };
+// Reklam gösterimi için yardımcı fonksiyon
+function showInterstitialAd() {
+    console.log('Yeni fal için reklam gösterimi atlandı - reklam işlevselliği devre dışı.');
+    // Burada ileride reklam gösterimi ekleyebilirsiniz
 }
 
-// Admin şifre kontrolü
-function checkAdminPassword(password) {
-    // Şifre kontrolü - güçlü bir şifre tanımlandı
-    const correctPassword = "123456"; // Bu şifreyi kimseyle paylaşmayın
+// Admin dashboard verilerini yükle
+function loadAdminDashboardData() {
+    console.log('Admin paneli verileri yükleniyor...');
 
-    // Şifre eşleşmesini kontrol et
-    if (password === correctPassword) {
-        // Başarılı giriş durumunda
-        const loginDate = new Date().toISOString();
-        localStorage.setItem('adminLoggedIn', 'true');
-        localStorage.setItem('adminLastLogin', loginDate);
-
-        // Başarılı giriş bildirimi
-        showNotification('success', 'Başarılı', 'Yönetici paneline yönlendiriliyorsunuz...', 1500);
-
-        setTimeout(() => {
-            window.location.href = 'admin-dashboard.html';
-        }, 1500);
-    } else {
-        // Başarısız giriş durumunda
-        const button = document.querySelector('#adminLoginForm button');
-        button.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg> Giriş Yap';
-        button.disabled = false;
-
-        // Başarısız giriş girişimlerini kaydet
-        let failedAttempts = JSON.parse(localStorage.getItem('adminFailedAttempts') || '[]');
-        failedAttempts.push({
-            timestamp: new Date().toISOString(),
-            enteredPassword: password.substring(0, 3) + '***' // Güvenlik için tam şifreyi kaydetmiyoruz
-        });
-        localStorage.setItem('adminFailedAttempts', JSON.stringify(failedAttempts));
-
-        showNotification('error', 'Hata', 'Hatalı şifre girdiniz. Lütfen tekrar deneyin.', 3000);
-    }
-}
-
-// Bildirim gösterme sistemi
-function showNotification(type, title, message, duration = 3000) {
-    // Mevcut bildirimler
-    const existingNotifications = document.querySelectorAll('.notification');
-    let offsetTop = 20;
-
-    existingNotifications.forEach(notification => {
-        offsetTop += notification.offsetHeight + 10;
-    });
-
-    // Bildirim içeriği
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.style.top = `${offsetTop}px`;
-
-    // İkon belirleme
-    let icon = '';
-    if (type === 'success') {
-        icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#4CAF50"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
-    } else if (type === 'error') {
-        icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#F44336"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
-    } else if (type === 'info') {
-        icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#2196F3"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+    // Admin panelinde olduğumuzu kontrol et
+    const isAdminDashboard = window.location.pathname.includes('admin-dashboard.html');
+    if (!isAdminDashboard) {
+        console.log('Admin dashboard sayfasında değiliz, veri yükleme işlemi atlanıyor.');
+        return;
     }
 
-    // Başlık ve mesajın ayrı ayrı belirtildiği durum
-    if (title && message) {
-        notification.innerHTML = `
-            <div class="notification-icon">${icon}</div>
-            <div class="notification-content">
-                <div class="notification-title">${title}</div>
-                <div class="notification-message">${message}</div>
-            </div>
-            <div class="notification-close">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-            </div>
-        `;
-    } 
-    // Sadece tek mesaj parametresi verildiği durum
-    else {
-        notification.innerHTML = `
-            <div class="notification-icon">${icon}</div>
-            <div class="notification-content">
-                <div class="notification-message">${title}</div>
-            </div>
-            <div class="notification-close">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-            </div>
-        `;
-    }
-
-    document.body.appendChild(notification);
-
-    // Ses çal (varsa)
-    try {
-        const notificationSound = document.getElementById('notificationSound');
-        if (notificationSound) {
-            notificationSound.play().catch(e => console.error("Bildirim sesi çalınamadı:", e));
-        }
-    } catch (e) {
-        console.error("Bildirim sesi çalma hatası:", e);
-    }
-
-    // Kapat düğmesi
-    const closeButton = notification.querySelector('.notification-close');
-    closeButton.addEventListener('click', () => {
-        closeNotification(notification);
-    });
-
-    // Otomatik kapat
-    setTimeout(() => {
-        closeNotification(notification);
-    }, duration);
-}
-
-function closeNotification(notification) {
-    notification.style.animation = 'slideOut 0.3s ease-out forwards';
-
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-            repositionNotifications();
-        }
-    }, 300);
-}
-
-function repositionNotifications() {
-    const notifications = document.querySelectorAll('.notification');
-    let offsetTop = 20;
-
-    notifications.forEach(notification => {
-        notification.style.top = `${offsetTop}px`;
-        offsetTop += notification.offsetHeight + 10;
-    });
-}
-
-// Admin paneli için fal kayıtlarını yükleme
-function loadFortuneLogs() {
-    // Admin girişi kontrol et
+    // Admin giriş durumunu kontrol et
     if (localStorage.getItem('adminLoggedIn') !== 'true') {
+        console.log('Admin girişi yapılmamış, login sayfasına yönlendiriliyor...');
         window.location.href = 'admin.html';
         return;
     }
 
-    // Yükleniyor göstergesi
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'loading-indicator';
-    loadingIndicator.innerHTML = `
-        <div class="spinner-large"></div>
-        <p>Veriler yükleniyor...</p>
-    `;
-    document.body.appendChild(loadingIndicator);
-
-    // Gerekli DOM elementlerini kontrol et ve güvenli bir şekilde eriş
-    const fortuneLogTable = document.getElementById('fortuneLogTable');
-    const visitorCountSpan = document.getElementById('visitorCount');
-    const fortuneCountSpan = document.getElementById('fortuneCount');
-
-    if (!fortuneLogTable) {
-        console.error('Fortune log tablosu bulunamadı!');
-        if (document.body.contains(loadingIndicator)) {
-            document.body.removeChild(loadingIndicator);
-        }
-        return;
+    // API durumunu kontrol et ve görsel olarak göster
+    const apiStatusEl = document.getElementById('apiStatus');
+    if (apiStatusEl) {
+        apiStatusEl.className = 'status-indicator status-pending';
+        const apiStatusTextEl = document.getElementById('apiStatusText');
+        if (apiStatusTextEl) apiStatusTextEl.textContent = 'Kontrol ediliyor...';
     }
 
-    // Verileri asenkron olarak yükle
-    setTimeout(() => {
-        try {
-            // Backend API'den ziyaretçi sayısını al
-            fetch('/api/visitors')
-                .then(response => response.json())
-                .then(data => {
-                    if (visitorCountSpan) visitorCountSpan.textContent = data.count || 0;
-                })
-                .catch(error => {
-                    console.error("Ziyaretçi sayısı alınamadı:", error);
-                    // Hata durumunda lokalden al
-                    const actualVisitorCount = localStorage.getItem('visitorCount') || '0';
-                    if (visitorCountSpan) visitorCountSpan.textContent = actualVisitorCount;
-                });
+    // Timeout promise oluştur - daha uzun timeout süresi
+    const createTimeoutPromise = () => new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('API yanıt zaman aşımı')), 8000);
+    });
 
-            // Backend API'den falları al
-            fetch('/api/fortunes')
-                .then(response => response.json())
-                .then(fortuneLogs => {
-                    console.log("API'den fallar yüklendi:", fortuneLogs.length);
-                    processFortuneData(fortuneLogs);
-                })
-                .catch(error => {
-                    console.error("API başarısız oldu, localStorage'dan veriler yükleniyor:", error);
-                    // API başarısız olursa localStorage'dan yükle
-                    let fortuneLogs = [];
-                    try {
-                        fortuneLogs = JSON.parse(localStorage.getItem('fortuneLogs') || '[]');
+    // Yükleniyor göstergelerini göster
+    const loaders = ['userStatsLoader', 'readingsStatsLoader', 'todayStatsLoader', 'zodiacStatsLoader', 
+                    'zodiacChartLoader', 'activityChartLoader', 'readingsTableLoader'];
+    loaders.forEach(id => {
+        const loader = document.getElementById(id);
+        if (loader) loader.style.display = 'flex';
+    });
 
-                        // Boş kontrolü
-                        if (!fortuneLogs || fortuneLogs.length === 0) {
-                            console.log("Fal kayıtları boş, örnek veri oluşturuluyor...");
-
-                            // Veritabanında hiç veri yoksa örnek veri oluştur
-                            const demoFortunes = [
-                                {
-                                    id: Date.now(),
-                                    date: new Date().toISOString(),
-                                    localDate: new Date().toLocaleString('tr-TR'),
-                                    name: "Demo Kullanıcı 1",
-                                    zodiac: "Koç",
-                                    fortune: "Yakın zamanda yeni bir iş fırsatı ile karşılaşacaksın. Bu fırsat, uzun zamandır beklediğin değişim için bir kapı açabilir.",
-                                    deviceInfo: {
-                                        browser: "Chrome",
-                                        os: "Android",
-                                        phoneModel: "Samsung Galaxy",
-                                        isMobile: true,
-                                        screenWidth: 375,
-                                        screenHeight: 812
-                                    }
-                                },
-                                {
-                                    id: Date.now() + 1,
-                                    date: new Date(Date.now() - 86400000).toISOString(), // 1 gün önce
-                                    localDate: new Date(Date.now() - 86400000).toLocaleString('tr-TR'),
-                                    name: "Demo Kullanıcı 2",
-                                    zodiac: "Balık",
-                                    fortune: "Duygusal açıdan yoğun bir dönemdesin. İçine kapanmak yerine sevdiklerinle duygularını paylaşırsan rahatladığını göreceksin.",
-                                    deviceInfo: {
-                                        browser: "Safari",
-                                        os: "iOS",
-                                        phoneModel: "iPhone 12",
-                                        isMobile: true,
-                                        screenWidth: 390,
-                                        screenHeight: 844
-                                    }
-                                }
-                            ];
-
-                            // Örnek verileri kaydet
-                            localStorage.setItem('fortuneLogs', JSON.stringify(demoFortunes));
-                            fortuneLogs = demoFortunes;
-                        }
-                    } catch (error) {
-                        console.error('Lokal fal kayıtları yüklenemedi:', error);
-                        showNotification('error', 'Hata', 'Fal kayıtları yüklenirken bir sorun oluştu.', 3000);
-                        fortuneLogs = [];
-                    }
-
-                    processFortuneData(fortuneLogs);
-                });
-
-        } catch (error) {
-            console.error('Veriler yüklenirken beklenmedik bir hata oluştu:', error);
-            if (document.body.contains(loadingIndicator)) {
-                document.body.removeChild(loadingIndicator);
+    // API durumunu kontrol et
+    checkApiStatus()
+        .then(isOnline => {
+            if (isOnline) {
+                console.log('API çevrimiçi, gerçek veriler yükleniyor...');
+                loadRealData();
+            } else {
+                console.log('API çevrimdışı, demo veriler yükleniyor...');
+                loadDemoData();
             }
-            showNotification('error', 'Hata', 'Veriler yüklenirken beklenmedik bir hata oluştu.', 3000);
-        }
-    }, 300); // Küçük bir gecikme ekleyelim ki yükleniyor animasyonu görünsün
-
-    // Veri işleme fonksiyonu
-    function processFortuneData(fortuneLogs) {
-        // Tarihe göre sırala (en yeniler en üstte)
-        fortuneLogs.sort((a, b) => {
-            return new Date(b.date) - new Date(a.date);
         });
 
-        // Fal sayısını göster
-        if (fortuneCountSpan) fortuneCountSpan.textContent = fortuneLogs.length;
-
-        // Tabloyu doldur
-        renderFortuneTable(fortuneLogTable, fortuneLogs);
-
-        // İstatistikleri güncelle - hatadan etkilenemeyecek şekilde
-        try {
-            // Cihaz istatistiklerini güncelle
-            updateDeviceStatistics(fortuneLogs);
-
-            // Diğer detaylı grafikleri güncelle
-            // Önce DOM'da oluştur, sonra verileri doldur
-            prepareChartContainers();
-            setTimeout(() => {
-                loadAllCharts(fortuneLogs);
-            }, 300);
-        } catch (error) {
-            console.error('İstatistikler güncellenirken hata oluştu:', error);
-        }
-
-        // Yükleme tamamlandı
-        const loadingIndicator = document.querySelector('.loading-indicator');
-        if (loadingIndicator && document.body.contains(loadingIndicator)) {
-            document.body.removeChild(loadingIndicator);
-        }
-
-        // İlk yüklendiğinde bildirim göster
-        showNotification('success', 'Hoş geldiniz', 'Yönetici paneline başarıyla giriş yaptınız.', 3000);
-
-        // İstatistikleri backend'den al
-        fetch('/api/stats/daily')
-            .then(response => response.json())
-            .then(stats => {
-                console.log("API'den günlük istatistikler yüklendi:", stats.length);
-                // Burada istatistiklerle ilgili ek işlemler yapılabilir
+    // API durumunu kontrol eden fonksiyon
+    function checkApiStatus() {
+        return fetch('/api/status')
+            .then(response => {
+                const isOnline = response.ok;
+                updateApiStatusIndicator(isOnline);
+                return isOnline;
             })
             .catch(error => {
-                console.error("API isteği başarısız:", error);
+                console.error('API durumu kontrol hatası:', error);
+                updateApiStatusIndicator(false);
+                return false;
             });
+    }
+
+    // API durum göstergesini güncelle
+    function updateApiStatusIndicator(isOnline) {
+        const apiStatusEl = document.getElementById('apiStatus');
+        const apiStatusTextEl = document.getElementById('apiStatusText');
+
+        if (apiStatusEl) {
+            apiStatusEl.className = `status-indicator status-${isOnline ? 'online' : 'offline'}`;
+        }
+
+        if (apiStatusTextEl) {
+            apiStatusTextEl.textContent = isOnline ? 'Çevrimiçi' : 'Çevrimdışı';
+        }
+    }
+
+    // Gerçek verileri yükle
+    function loadRealData() {
+        // Tüm API isteklerini bir arada yap
+        Promise.allSettled([
+            // Admin istatistikleri
+            Promise.race([
+                fetch('/api/admin/stats'),
+                createTimeoutPromise()
+            ])
+                .then(response => {
+                    if (!response.ok) throw new Error('İstatistikler alınamadı: ' + response.status);
+                    return response.json();
+                }),
+
+            // Son fallar
+            Promise.race([
+                fetch('/api/admin/latest-readings'),
+                createTimeoutPromise()
+            ])
+                .then(response => {
+                    if (!response.ok) throw new Error('Son fallar alınamadı: ' + response.status);
+                    return response.json();
+                }),
+
+            // Burç dağılımı
+            Promise.race([
+                fetch('/api/admin/zodiac-distribution'),
+                createTimeoutPromise()
+            ])
+                .then(response => {
+                    if (!response.ok) throw new Error('Burç dağılımı alınamadı: ' + response.status);
+                    return response.json();
+                }),
+
+            // Aktivite verileri
+            Promise.race([
+                fetch('/api/admin/activity-data'),
+                createTimeoutPromise()
+            ])
+                .then(response => {
+                    if (!response.ok) throw new Error('Aktivite verileri alınamadı: ' + response.status);
+                    return response.json();
+                })
+        ])
+        .then(results => {
+            console.log('Tüm API istekleri tamamlandı:', results);
+
+            // Her bir sonucu işle
+            results.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    switch (index) {
+                        case 0: // İstatistikler
+                            if (window.updateStatsCards && typeof window.updateStatsCards === 'function') {
+                                window.updateStatsCards(result.value);
+                            }
+                            document.getElementById('userStatsLoader').style.display = 'none';
+                            document.getElementById('readingsStatsLoader').style.display = 'none';
+                            document.getElementById('todayStatsLoader').style.display = 'none';
+                            document.getElementById('zodiacStatsLoader').style.display = 'none';
+                            break;
+                        case 1: // Son fallar
+                            if (window.updateReadingsTable && typeof window.updateReadingsTable === 'function') {
+                                window.updateReadingsTable(result.value);
+                            }
+                            document.getElementById('readingsTableLoader').style.display = 'none';
+                            break;
+                        case 2: // Burç dağılımı
+                            if (window.updateZodiacChart && typeof window.updateZodiacChart === 'function') {
+                                window.updateZodiacChart(result.value);
+                            }
+                            document.getElementById('zodiacChartLoader').style.display = 'none';
+                            break;
+                        case 3: // Aktivite verileri
+                            if (window.updateActivityChart && typeof window.updateActivityChart === 'function') {
+                                window.updateActivityChart(result.value);
+                            }
+                            document.getElementById('activityChartLoader').style.display = 'none';
+                            break;
+                    }
+                } else {
+                    console.error(`API isteği ${index} başarısız:`, result.reason);
+                    // Hata durumunu işle ve ilgili yükleme spinnerını gizle
+                    switch (index) {
+                        case 0: // İstatistikler
+                            if (window.updateStatsCards && typeof window.updateStatsCards === 'function') {
+                                window.updateStatsCards(getDemoStats());
+                            }
+                            document.getElementById('userStatsLoader').style.display = 'none';
+                            document.getElementById('readingsStatsLoader').style.display = 'none';
+                            document.getElementById('todayStatsLoader').style.display = 'none';
+                            document.getElementById('zodiacStatsLoader').style.display = 'none';
+                            break;
+                        case 1: // Son fallar
+                            if (window.updateReadingsTable && typeof window.updateReadingsTable === 'function') {
+                                window.updateReadingsTable(getDemoReadings());
+                            }
+                            document.getElementById('readingsTableLoader').style.display = 'none';
+                            break;
+                        case 2: // Burç dağılımı
+                            if (window.updateZodiacChart && typeof window.updateZodiacChart === 'function') {
+                                window.updateZodiacChart(getDemoZodiacDistribution());
+                            }
+                            document.getElementById('zodiacChartLoader').style.display = 'none';
+                            break;
+                        case 3: // Aktivite verileri
+                            if (window.updateActivityChart && typeof window.updateActivityChart === 'function') {
+                                window.updateActivityChart(getDemoActivityData());
+                            }
+                            document.getElementById('activityChartLoader').style.display = 'none';
+                            break;
+                    }
+                }
+            });
+
+            // Son yenileme zamanını güncelle
+            updateLastRefreshTime();
+        });
+    }
+
+    // Demo verileri yükle
+    function loadDemoData() {
+        // Demo veri fonksiyonları
+        function getDemoStats() {
+            return {
+                totalUsers: 120,
+                totalReadings: 358,
+                todayReadings: 42,
+                mostPopularZodiac: 'Aslan',
+                userGrowth: 8,
+                readingGrowth: 12,
+                todayGrowth: 5,
+                zodiacGrowth: 15,
+                lastUpdated: new Date().toISOString()
+            };
+        }
+
+        function getDemoReadings() {
+            return [
+                { username: 'Ahmet Yılmaz', zodiac: 'Koç', reading: 'Önünüzdeki engelleri aşmanın yolu cesaret ve sabırdan geçiyor.', date: '2025-03-12 14:24:38' },
+                { username: 'Ayşe Demir', zodiac: 'Boğa', reading: 'Finansal açıdan yükselişe geçeceğiniz bir dönem başlıyor.', date: '2025-03-12 13:42:23' },
+                { username: 'Mehmet Kaya', zodiac: 'İkizler', reading: 'İletişim konusunda kendinizi geliştirecek yeni fırsatlara açık olun.', date: '2025-03-12 11:15:39' },
+                { username: 'Zeynep Şahin', zodiac: 'Yengeç', reading: 'Duygusal dengenizi koruyun, ailenize zaman ayırmanız gerekiyor.', date: '2025-03-12 10:07:12' },
+                { username: 'Ali Özkan', zodiac: 'Aslan', reading: 'Liderlik vasıflarınızı kullanma zamanı, kendinize güvenin.', date: '2025-03-11 17:34:19' }
+            ];
+        }
+
+        function getDemoZodiacDistribution() {
+            return {
+                zodiacSigns: ['Koç', 'Boğa', 'İkizler', 'Yengeç', 'Aslan', 'Başak', 'Terazi', 'Akrep', 'Yay', 'Oğlak', 'Kova', 'Balık'],
+                counts: [42, 38, 25, 31, 48, 22, 19, 36, 29, 27, 18, 23]
+            };
+        }
+
+        function getDemoActivityData() {
+            const labels = [];
+            const values = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }));
+                values.push(Math.floor(Math.random() * 40) + 10);
+            }
+
+            return { labels, values };
+        }
+
+        // Demo verileri güncelle
+        if (window.updateStatsCards && typeof window.updateStatsCards === 'function') {
+            window.updateStatsCards(getDemoStats());
+        }
+        if (window.updateReadingsTable && typeof window.updateReadingsTable === 'function') {
+            window.updateReadingsTable(getDemoReadings());
+        }
+        if (window.updateZodiacChart && typeof window.updateZodiacChart === 'function') {
+            window.updateZodiacChart(getDemoZodiacDistribution());
+        }
+        if (window.updateActivityChart && typeof window.updateActivityChart === 'function') {
+            window.updateActivityChart(getDemoActivityData());
+        }
+
+        // Yükleniyor göstergelerini gizle
+        loaders.forEach(id => {
+            const loader = document.getElementById(id);
+            if (loader) loader.style.display = 'none';
+        });
+
+        // Bildirim göster
+        if (window.showNotification && typeof window.showNotification === 'function') {
+            window.showNotification('info', 'Demo Veriler', 'API erişilemediği için demo veriler görüntüleniyor.');
+        }
+
+        // Son yenileme zamanını güncelle
+        updateLastRefreshTime();
+    }
+
+    // Son yenileme zamanını güncelle
+    function updateLastRefreshTime() {
+        const lastRefreshTimeEl = document.getElementById('lastRefreshTime');
+        if (lastRefreshTimeEl) {
+            const now = new Date();
+            lastRefreshTimeEl.textContent = now.toLocaleTimeString();
+        }
     }
 }
 
-// Tablo render fonksiyonu
-function renderFortuneTable(fortuneLogTable, fortuneLogs) {
-    console.log("Tabloya yerleştirilecek fal kayıtları:", fortuneLogs);
+// Admin istatistiklerini göster
+function displayAdminStats(stats) {
+    // Bu fonksiyonu admin-dashboard.html sayfasına göre özelleştirin
+    const elements = {
+        totalUsers: document.getElementById('totalUsers'),
+        totalReadings: document.getElementById('totalReadings'),
+        todayReadings: document.getElementById('todayReadings'),
+        mostPopularZodiac: document.getElementById('mostPopularZodiac'),
+        userGrowth: document.getElementById('userGrowth'),
+        readingGrowth: document.getElementById('readingGrowth'),
+        todayGrowth: document.getElementById('todayGrowth'),
+        lastUpdated: document.getElementById('lastUpdated')
+    };
 
-    // Tabloyu doldur
-    fortuneLogTable.innerHTML = `
-        <tr>
-            <th>Tarih</th>
-            <th>İsim</th>
-            <th>Telefon Modeli</th>
-            <th>Burç</th>
-            <th>Fal Metni</th>
-            <th>İşlemler</th>
-        </tr>
-    `;
+    // Elementler varsa değerleri güncelle
+    if (elements.totalUsers) elements.totalUsers.textContent = stats.totalUsers || 0;
+    if (elements.totalReadings) elements.totalReadings.textContent = stats.totalReadings || 0;0;
+    if (elements.todayReadings) elements.todayReadings.textContent = stats.todayReadings || 0;
+    if (elements.mostPopularZodiac) elements.mostPopularZodiac.textContent = stats.mostPopularZodiac || 'Belirtilmemiş';
 
-    if (!fortuneLogs || fortuneLogs.length === 0) {
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `
-            <td colspan="6" style="text-align: center; padding: 30px;">
-                <div style="opacity: 0.6;">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="white" style="margin-bottom: 10px; opacity: 0.5;">
-                        <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"/>
-                    </svg>
-                    <p>Henüz kaydedilmiş fal bulunmamaktadır.</p>
-                </div>
-            </td>
-        `;
-        fortuneLogTable.appendChild(emptyRow);
+    // Büyüme oranlarını göster
+    if (elements.userGrowth) {
+        const userGrowthValue = stats.userGrowth || 0;
+        elements.userGrowth.textContent = `${userGrowthValue}%`;
+        elements.userGrowth.className = userGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    if (elements.readingGrowth) {
+        const readingGrowthValue = stats.readingGrowth || 0;
+        elements.readingGrowth.textContent = `${readingGrowthValue}%`;
+        elements.readingGrowth.className = readingGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    if (elements.todayGrowth) {
+        const todayGrowthValue = stats.todayGrowth || 0;
+        elements.todayGrowth.textContent = `${todayGrowthValue}%`;
+        elements.todayGrowth.className = todayGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    // Son güncelleme zamanını göster
+    if (elements.lastUpdated && stats.lastUpdated) {
+        const lastUpdatedDate = new Date(stats.lastUpdated);
+        elements.lastUpdated.textContent = `Son Güncelleme: ${lastUpdatedDate.toLocaleString('tr-TR')}`;
+    }
+}
+
+// Son falları göster
+function displayLatestFortunes(fortunes) {
+    const fortunesList = document.getElementById('latestFortunesList');
+    if (!fortunesList) return;
+
+    fortunesList.innerHTML = '';
+
+    if (fortunes.length === 0) {
+        fortunesList.innerHTML = '<tr><td colspan="4" class="text-center">Henüz kaydedilmiş fal bulunmamaktadır.</td></tr>';
         return;
     }
 
-    // Falları batches halinde render et (büyük veri setleri için performans iyileştirmesi)
-    const batchSize = 20;
-    const totalEntries = fortuneLogs.length;
-
-    // İlk batch'i hemen render et
-    renderBatch(0, Math.min(batchSize, totalEntries));
-
-    function renderBatch(startIndex, endIndex) {
-        for (let i = startIndex; i < endIndex; i++) {
-            const log = fortuneLogs[i];
-            renderFortuneRow(log, i);
-        }
-
-        // Eğer daha fazla veri varsa, sonraki batch'i zamanla
-        if (endIndex < totalEntries) {
-            setTimeout(() => {
-                renderBatch(endIndex, Math.min(endIndex + batchSize, totalEntries));
-            }, 10);
-        }
-    }
-
-    function renderFortuneRow(log, index) {
-        if (!log) {
-            console.error(`Kayıt ${index} tanımsız veya null:`, log);
-            return;
-        }
-
+    fortunes.forEach(fortune => {
         const row = document.createElement('tr');
 
-        try {
-            // Safe values handling with detailed logging for debugging
-            const name = log.name || 'İsimsiz';
-            console.log(`Kayıt ${index} isim:`, name);
-
-            let date = 'Tarih Yok';
-            try {
-                date = log.date ? formatDate(log.date) : 'Tarih Yok';
-            } catch (e) {
-                console.error(`Tarih formatlanırken hata (Kayıt ${index}):`, e);
-            }
-
-            const zodiac = log.zodiac || 'Belirsiz';
-            console.log(`Kayıt ${index} burç:`, zodiac);
-
-            const fortune = log.fortune || 'Fal metni bulunamadı';
-            console.log(`Kayıt ${index} fal metni:`, fortune.substring(0, 30) + (fortune.length > 30 ? '...' : ''));
-
-            let phoneModel = 'Bilinmiyor';
-            if (log.phoneModel) {
-                phoneModel = log.phoneModel;
-            } else if (log.deviceInfo && log.deviceInfo.phoneModel) {
-                phoneModel = log.deviceInfo.phoneModel;
-            }
-
-            // Burcun ilk harfini alarak renk kodu oluştur
-            let zodiacInitial = 65; // Default 'A'
-            try {
-                zodiacInitial = zodiac.charCodeAt(0) || 65;
-            } catch (e) {
-                console.error(`Burç harfi alınırken hata (Kayıt ${index}):`, e);
-            }
-
-            const hue = (zodiacInitial * 15) % 360;
-            const zodiacColor = `hsl(${hue}, 70%, 60%)`;
-
-            // Cihaz tipi belirleme
-            let isMobile = false;
-            try {
-                isMobile = log.deviceInfo && log.deviceInfo.isMobile;
-            } catch (e) {
-                console.error(`Cihaz tipi belirlenirken hata (Kayıt ${index}):`, e);
-            }
-
-            const deviceStyle = isMobile ? 
-                'background-color: rgba(76, 175, 80, 0.2);' : 
-                'background-color: rgba(33, 150, 243, 0.2);';
-
-            row.innerHTML = `
-                <td>${date}</td>
-                <td>${name}</td>
-                <td>
-                    <span style="display: inline-block; padding: 4px 10px; border-radius: 20px; ${deviceStyle} font-size: 0.85rem; font-weight: 500;">
-                        ${phoneModel}
-                    </span>
-                </td>
-                <td>
-                    <span style="display: inline-block; padding: 4px 10px; border-radius: 20px; background-color: ${zodiacColor}; font-size: 0.85rem; font-weight: 500;">
-                        ${zodiac}
-                    </span>
-                </td>
-                <td>
-                    <div class="fortune-preview tooltip" data-fortune-id="${index}">
-                        ${fortune.substring(0, 70)}${fortune.length > 70 ? '...' : ''}
-                        <span class="tooltip-text">Tıklayarak tam metni görüntüleyin</span>
-                    </div>
-                </td>
-                <td>
-                    <button class="action-button view-button" data-fortune-id="${index}" style="background: none; padding: 5px; margin: 0;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                        </svg>
-                    </button>
-                </td>
-            `;
-            fortuneLogTable.appendChild(row);
-
-            // Tam fal metnini görüntüleme için olay dinleyicisi
-            const fortunePreview = row.querySelector('.fortune-preview');
-            const viewButton = row.querySelector('.view-button');
-
-            function showFortuneDetail() {
-                openFortuneDetailModal(fortuneLogs[index]);
-            }
-
-            if (fortunePreview) fortunePreview.addEventListener('click', showFortuneDetail);
-            if (viewButton) viewButton.addEventListener('click', showFortuneDetail);
-        } catch (error) {
-            console.error(`Satır ${index} işlenirken hata:`, error);
-            console.log(`Hatalı kayıt verisi:`, log);
-            row.innerHTML = `
-                <td colspan="6" style="color: #ff6b6b;">
-                    Veri hatası - Bu kayıt geçersiz veya bozuk (Kayıt #${index+1})
-                </td>
-            `;
-            fortuneLogTable.appendChild(row);
-        }
-    }
-}
-
-// Fal detayları modalı
-function openFortuneDetailModal(fortune) {
-    // Check if a modal already exists and remove it to prevent duplicates
-    const existingModal = document.querySelector('.fortune-modal');
-    if (existingModal) {
-        document.body.removeChild(existingModal);
-    }
-
-    try {
-        const modal = document.createElement('div');
-        modal.className = 'fortune-modal';
-
-        // Cihaz bilgisi kısmını oluştur
-        let deviceInfoHTML = '';
-        if (fortune.deviceInfo) {
-            deviceInfoHTML = `
-                <div class="fortune-device-info">
-                    <h4>Cihaz Bilgileri</h4>
-                    <p><strong>Telefon Modeli:</strong> ${fortune.phoneModel || 'Belirtilmemiş'}</p>
-                    <p><strong>İşletim Sistemi:</strong> ${fortune.os || 'Belirtilmemiş'}</p>
-                    <p><strong>Tarayıcı:</strong> ${fortune.browser || 'Belirtilmemiş'}</p>
-                    <p><strong>Cihaz Tipi:</strong> ${fortune.deviceInfo.isMobile ? 'Mobil' : 'Masaüstü'}</p>
-                    <p><strong>Ekran Boyutu:</strong> ${fortune.deviceInfo.screenWidth || 0}x${fortune.deviceInfo.screenHeight || 0}</p>
-                </div>
-            `;
-        }
-
-        modal.innerHTML = `
-            <div class="fortune-modal-content">
-                <div class="fortune-modal-header">
-                    <h3>${fortune.name || 'İsimsiz'} - ${fortune.zodiac || 'Belirsiz'}</h3>
-                    <button class="close-modal">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="fortune-modal-body">
-                    <p class="fortune-date">${fortune.date || 'Tarih Yok'}</p>
-                    <p class="fortune-device"><strong>Cihaz:</strong> ${fortune.phoneModel || 'Belirtilmemiş'}</p>
-                    <div class="fortune-text">${(fortune.fortune || 'Fal metni bulunamadı').replace(/\n/g, '<br>')}</div>
-                    ${deviceInfoHTML}
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        // Animasyonları etkinleştir
-        setTimeout(() => {
-            modal.style.opacity = '1';
-            modal.querySelector('.fortune-modal-content').style.transform = 'translateY(0)';
-        }, 10);
-
-        // Modalı kapatma
-        const closeButton = modal.querySelector('.close-modal');
-        if (closeButton) {
-            closeButton.addEventListener('click', () => {
-                closeFortuneModal(modal);
-            });
-        }
-
-        // Modal dışına tıklama
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeFortuneModal(modal);
-            }
-        });
-    } catch (error) {
-        console.error('Fal detay modalı açılırken hata oluştu:', error);
-        showNotification('error', 'Hata', 'Fal detayları yüklenirken bir sorun oluştu.', 3000);
-    }
-}
-
-// Modal kapatma fonksiyonu
-function closeFortuneModal(modal) {
-    if (!modal) return;
-
-    modal.style.opacity = '0';
-    const content = modal.querySelector('.fortune-modal-content');
-    if (content) content.style.transform = 'translateY(20px)';
-
-    setTimeout(() => {
-        if (modal.parentNode) {
-            modal.parentNode.removeChild(modal);
-        }
-    }, 300);
-}
-
-// Grafik konteynerlerini hazırla
-function prepareChartContainers() {
-    // Grafik konteynerlerini DOM'a ekle
-    const adminDashboard = document.querySelector('.admin-dashboard');
-    if (!adminDashboard) return;
-
-    // Eğer konteynerler zaten varsa boşalt
-    const existingContainer = document.getElementById('chartsMainContainer');
-    if (existingContainer) {
-        existingContainer.innerHTML = '';
-    } else {
-        // Yoksa yeni konteyner oluştur
-        const container = document.createElement('div');
-        container.id = 'chartsMainContainer';
-        container.className = 'stats-summary';
-        container.innerHTML = `
-            <h3 class="section-title">Detaylı Veri Analizi</h3>
-            <div class="charts-loading">
-                <div class="spinner"></div>
-                <p>Grafikler hazırlanıyor...</p>
-            </div>
-            <div class="chart-grid" id="chartGrid">
-                <div class="chart-container">
-                    <h4>Günlük Fal Aktivitesi</h4>
-                    <canvas id="dailyActivityChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h4>Burç Dağılımı</h4>
-                    <canvas id="zodiacDistributionChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h4>Saatlik Aktivite</h4>
-                    <canvas id="hourlyActivityChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h4>Cihaz Kullanımı</h4>
-                    <canvas id="deviceUsageChart"></canvas>
-                </div>
-            </div>
-
-            <h3 class="section-title" style="margin-top: 30px;">Gerçek Zamanlı Aktivite</h3>
-            <div class="realtime-stats">
-                <div class="realtime-stat-box">
-                    <div class="realtime-stat-title">Şu An Aktif</div>
-                    <div class="realtime-stat-value" id="currentActiveUsers">0</div>
-                    <div class="realtime-stat-label">kullanıcı</div>
-                </div>
-                <div class="realtime-stat-box">
-                    <div class="realtime-stat-title">Son 1 Saatte</div>
-                    <div class="realtime-stat-value" id="lastHourFortunes">0</div>
-                    <div class="realtime-stat-label">fal bakıldı</div>
-                </div>
-                <div class="realtime-stat-box">
-                    <div class="realtime-stat-title">Bugün</div>
-                    <div class="realtime-stat-value" id="todaysTotalFortunes">0</div>
-                    <div class="realtime-stat-label">fal bakıldı</div>
-                </div>
-                <div class="realtime-stat-box">
-                    <div class="realtime-stat-title">Ortalama Süre</div>
-                    <div class="realtime-stat-value" id="averageSessionTime">0s</div>
-                    <div class="realtime-stat-label">site kullanımı</div>
-                </div>
-            </div>
-        `;
-
-        // Container'ı sayfaya ekle
-        const actionButtons = document.querySelector('.action-buttons');
-        if (actionButtons) {
-            adminDashboard.insertBefore(container, actionButtons);
-        } else {
-            adminDashboard.appendChild(container);
-        }
-
-        // Stil ekle
-        addChartStyles();
-    }
-}
-
-// Chart stilleri
-function addChartStyles() {
-    const styleId = 'chartStyles';
-    if (document.getElementById(styleId)) return;
-
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-        .chart-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .chart-container {
-            background-color: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            height: 250px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .chart-container:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .chart-container h4 {
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #e0f7fa;
-            font-size: 1rem;
-        }
-
-        .spinner-large {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #9c27b0;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        .loading-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            color: white;
-            font-size: 1.2rem;
-        }
-
-        .charts-loading {
-            padding: 20px;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .realtime-stats {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .realtime-stat-box {
-            background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(103, 58, 183, 0.2));
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            flex: 1;
-            min-width: 150px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s ease;
-        }
-
-        .realtime-stat-box:hover {
-            transform: translateY(-3px);
-        }
-
-        .realtime-stat-box::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, rgba(103, 58, 183, 0), rgba(103, 58, 183, 0.8), rgba(103, 58, 183, 0));
-            bottom: 0;
-            left: 0;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 0.3;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0.3;
-            }
-        }
-
-        .realtime-stat-title {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 8px;
-        }
-
-        .realtime-stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .realtime-stat-label {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.6);
-        }
-    `;
-
-    document.head.appendChild(style);
-}
-
-// Tüm grafikleri yükle
-function loadAllCharts(fortuneLogs) {
-    try {
-        // Yükleniyor göstergesini kaldır
-        const loadingIndicator = document.querySelector('.charts-loading');
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
-
-        // Her grafik için ayrı try-catch bloklarıyla hata yakalama
-        try {
-            loadDailyActivityChart(fortuneLogs);
-        } catch (error) {
-            console.error('Günlük aktivite grafiği yüklenirken hata:', error);
-            showErrorInChart('dailyActivityChart');
-        }
-
-        try {
-            loadZodiacDistributionChart(fortuneLogs);
-        } catch (error) {
-            console.error('Burç dağılımı grafiği yüklenirken hata:', error);
-            showErrorInChart('zodiacDistributionChart');
-        }
-
-        try {
-            loadHourlyActivityChart(fortuneLogs);
-        } catch (error) {
-            console.error('Saatlik aktivite grafiği yüklenirken hata:', error);
-            showErrorInChart('hourlyActivityChart');
-        }
-
-        try {
-            loadDeviceUsageChart(fortuneLogs);
-        } catch (error) {
-            console.error('Cihaz kullanımı grafiği yüklenirken hata:', error);
-            showErrorInChart('deviceUsageChart');
-        }
-
-        // Gerçek zamanlı istatistikler
-        updateRealtimeStats(fortuneLogs);
-    } catch (error) {
-        console.error('Grafikler yüklenirken genel hata:', error);
-    }
-}
-
-// Grafik yükleme hatası durumunda hata gösterme
-function showErrorInChart(chartId) {
-    const canvas = document.getElementById(chartId);
-    if (!canvas) return;
-
-    const container = canvas.parentElement;
-    if (!container) return;
-
-    // Canvas'ı gizle ve hata mesajı göster
-    canvas.style.display = 'none';
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'chart-error';
-    errorDiv.innerHTML = `
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="#ff6b6b">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        </svg>
-        <p>Grafik yüklenemedi</p>
-        <button class="retry-button">Yeniden Dene</button>
-    `;
-
-    container.appendChild(errorDiv);
-
-    // Yeniden deneme düğmesi
-    const retryButton = errorDiv.querySelector('.retry-button');
-    if (retryButton) {
-        retryButton.addEventListener('click', function() {
-            // Hata mesajını kaldır ve canvas'ı geri göster
-            container.removeChild(errorDiv);
-            canvas.style.display = '';
-
-            // Grafiği yeniden yüklemeyi dene
-            try {
-                const fortuneLogs = JSON.parse(localStorage.getItem('fortuneLogs') || '[]');
-                switch(chartId) {
-                    case 'dailyActivityChart':
-                        loadDailyActivityChart(fortuneLogs);
-                        break;
-                    case 'zodiacDistributionChart':
-                        loadZodiacDistributionChart(fortuneLogs);
-                        break;
-                    case 'hourlyActivityChart':
-                        loadHourlyActivityChart(fortuneLogs);
-                        break;
-                    case 'deviceUsageChart':
-                        loadDeviceUsageChart(fortuneLogs);
-                        break;
-                }
-            } catch (error) {
-                console.error(`${chartId} yeniden yüklenirken hata:`, error);
-                showErrorInChart(chartId);
-            }
-        });
-    }
-}
-
-// Cihaz istatistiklerini güncelleme
-function updateDeviceStatistics(fortuneLogs) {
-    // Zaten HTML'de cihaz istatistikleri bölümü var mı kontrol et
-    let deviceStatsContainer = document.getElementById('deviceStatsContainer');
-
-    // Yoksa oluştur
-    if (!deviceStatsContainer) {
-        const statsSummary = document.querySelector('.stats-summary');
-        if (!statsSummary) return;
-
-        deviceStatsContainer = document.createElement('div');
-        deviceStatsContainer.id = 'deviceStatsContainer';
-        deviceStatsContainer.className = 'stats-summary';
-        deviceStatsContainer.innerHTML = `
-            <h3 class="section-title">Cihaz İstatistikleri</h3>
-            <div class="device-stats-grid" id="deviceStatsGrid"></div>
-        `;
-
-        statsSummary.after(deviceStatsContainer);
-
-        // Çizelge için stil ekle
-        const style = document.createElement('style');
-        style.textContent = `
-            .device-stats-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 15px;
-                margin-top: 15px;
-            }
-            .device-stat-box {
-                background-color: rgba(0, 0, 0, 0.3);
-                border-radius: 10px;
-                padding: 15px;
-                text-align: center;
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-            }
-            .device-stat-box:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            }
-            .device-stat-title {
-                font-size: 1rem;
-                margin-bottom: 10px;
-                color: #e0f7fa;
-            }
-            .device-stat-count {
-                font-size: 1.8rem;
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-            .device-stat-percentage {
-                font-size: 0.9rem;
-                color: rgba(255, 255, 255, 0.7);
-            }
-            .device-chart-container {
-                height: 300px;
-                margin-top: 20px;
-            }
-            .empty-device-stats {
-                text-align: center;
-                padding: 30px;
-                opacity: 0.6;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // Cihaz istatistik grid'ini temizle
-    const deviceStatsGrid = document.getElementById('deviceStatsGrid');
-    deviceStatsGrid.innerHTML = '';
-
-    // Cihaz sayılarını hesapla
-    const deviceCounts = {};
-    const osCounts = {};
-    const browserCounts = {};
-    let mobileCount = 0;
-    let desktopCount = 0;
-
-    fortuneLogs.forEach(log => {
-        // Telefon modeli istatistiği
-        const phoneModel = log.phoneModel || 'Bilinmiyor';
-        deviceCounts[phoneModel] = (deviceCounts[phoneModel] || 0) + 1;
-
-        // İşletim sistemi istatistiği
-        if (log.os) {
-            osCounts[log.os] = (osCounts[log.os] || 0) + 1;
-        }
-
-        // Tarayıcı istatistiği
-        if (log.browser) {
-            browserCounts[log.browser] = (browserCounts[log.browser] || 0) + 1;
-        }
-
-        // Mobil/Masaüstü istatistiği
-        if (log.deviceInfo && log.deviceInfo.isMobile) {
-            mobileCount++;
-        } else {
-            desktopCount++;
-        }
-    });
-
-    if (fortuneLogs.length === 0) {
-        deviceStatsGrid.innerHTML = `
-            <div class="empty-device-stats">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="white" style="margin-bottom: 10px; opacity: 0.5;">
-                    <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3V8h-2v5H8l4 4 4-4z"/>
-                </svg>
-                <p>Henüz cihaz verisi bulunmamaktadır.</p>
-            </div>
-        `;
-        return;
-    }
-
-    // En popüler cihazları al ve göster (ilk 4)
-    const deviceEntries = Object.entries(deviceCounts).sort((a, b) => b[1] - a[1]);
-    const topDevices = deviceEntries.slice(0, 4);
-
-    topDevices.forEach(([device, count]) => {
-        const percentage = ((count / fortuneLogs.length) * 100).toFixed(1);
-        const deviceStatBox = document.createElement('div');
-        deviceStatBox.className = 'device-stat-box';
-        deviceStatBox.innerHTML = `
-            <div class="device-stat-title">${device}</div>
-            <div class="device-stat-count">${count}</div>
-            <div class="device-stat-percentage">${percentage}% Kullanıcı</div>
-        `;
-        deviceStatsGrid.appendChild(deviceStatBox);
-    });
-
-    // Mobil/Masaüstü istatistiği
-    const mobilePercentage = ((mobileCount / fortuneLogs.length) * 100).toFixed(1);
-    const desktopPercentage = ((desktopCount / fortuneLogs.length) * 100).toFixed(1);
-
-    const deviceTypeBox = document.createElement('div');
-    deviceTypeBox.className = 'device-stat-box';
-    deviceTypeBox.innerHTML = `
-        <div class="device-stat-title">Cihaz Türü</div>
-        <div class="device-stat-count">${mobileCount + desktopCount}</div>
-        <div class="device-stat-percentage">
-            <span style="color: #4CAF50;">${mobilePercentage}% Mobil</span> / 
-            <span style="color: #2196F3;">${desktopPercentage}% Masaüstü</span>
-        </div>
-    `;
-    deviceStatsGrid.appendChild(deviceTypeBox);
-
-    // Grafik için container oluştur
-    let chartContainer = document.getElementById('deviceChartContainer');
-
-    if (!chartContainer) {
-        chartContainer = document.createElement('div');
-        chartContainer.id = 'deviceChartContainer';
-        chartContainer.className = 'device-chart-container';
-
-        // Canvas ekle
-        const canvas = document.createElement('canvas');
-        canvas.id = 'deviceChart';
-        chartContainer.appendChild(canvas);
-
-        deviceStatsContainer.appendChild(chartContainer);
-    }
-
-    // Cihaz grafiği oluştur
-    const ctx = document.getElementById('deviceChart').getContext('2d');
-
-    // Eğer önceden bir grafik varsa temizle
-    if (window.deviceChart) {
-        window.deviceChart.destroy();
-    }
-
-    // Grafik verilerini hazırla
-    const deviceLabels = topDevices.map(([device]) => device);
-    const deviceData = topDevices.map(([_, count]) => count);
-
-    // Rastgele renkler oluştur
-    const generateColors = (count) => {
-        const colors = [];
-        for (let i = 0; i < count; i++) {
-            const hue = (i * 137) % 360; // Altın oran ile renkler arası dağılım
-            colors.push(`hsla(${hue}, 70%, 60%, 0.7)`);
-        }
-        return colors;
-    };
-
-    const backgroundColors = generateColors(deviceLabels.length);
-
-    // Grafiği oluştur
-    window.deviceChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: deviceLabels,
-            datasets: [{
-                data: deviceData,
-                backgroundColor: backgroundColors,
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: 'white',
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Cihaz Dağılımı',
-                    color: 'white',
-                    font: {
-                        size: 16
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw;
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
+        // Kullanıcı adı
+        const nameCell = document.createElement('td');
+        nameCell.textContent = fortune.username;
+        row.appendChild(nameCell);
+
+        // Burç
+        const zodiacCell = document.createElement('td');
+        zodiacCell.textContent = fortune.zodiac;
+        row.appendChild(zodiacCell);
+
+        // Fal özeti
+        const readingCell = document.createElement('td');
+        // Fal metninin ilk 30 karakterini göster
+        readingCell.textContent = fortune.reading.length > 30 ? 
+            fortune.reading.substring(0, 30) + '...' : 
+            fortune.reading;
+
+        // Tam metni tooltip olarak göster
+        readingCell.title = fortune.reading;
+        row.appendChild(readingCell);
+
+        // Tarih
+        const dateCell = document.createElement('td');
+        dateCell.textContent = fortune.date;
+        row.appendChild(dateCell);
+
+        fortunesList.appendChild(row);
     });
 }
 
-// Tarihi daha güzel formatlama
-function formatDate(dateString) {
-    const date = new Date(dateString);
+// Burç dağılımını göster
+function displayZodiacDistribution(data) {
+    console.log('Burç dağılımı görüntüleniyor:', data);
 
-    // Bugün
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Dün
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Tarih kontrolü
-    const dateToCheck = new Date(date);
-    dateToCheck.setHours(0, 0, 0, 0);
-
-    if (dateToCheck.getTime() === today.getTime()) {
-        // Bugün ise saat göster
-        return `Bugün ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else if (dateToCheck.getTime() === yesterday.getTime()) {
-        // Dün ise
-        return `Dün ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else {
-        // Diğer günler için normal format
-        const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-        return date.toLocaleDateString('tr-TR', options);
-    }
-}
-
-// Günlük aktivite grafiği yükleme fonksiyonu
-function loadDailyActivityChart(fortuneLogs) {
-    const chartElement = document.getElementById('dailyActivityChart');
-    if (!chartElement) {
-        console.error('dailyActivityChart canvas bulunamadı');
-        return;
+    const chartContainer = document.getElementById('zodiacChartContainer');
+    if (chartContainer) {
+        chartContainer.classList.remove('loading');
     }
 
-    const ctx = chartElement.getContext('2d');
-    if (!ctx) {
-        console.error('2D context alınamadı');
-        return    }
+    const ctx = document.getElementById('zodiacChart');
+    if (!ctx) return;
 
-    // Eğer önceki bir grafik varsa yok et
-    if (window.dailyActivityChart) {
-        window.dailyActivityChart.destroy();
+    // Loading spinner'ı kaldır
+    const loadingSpinner = document.querySelector('#zodiacChartContainer .loading-spinner');
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'none';
     }
 
-    // Son 14 günün tarihlerini ve verilerini hazırla
-    const dates = [];
-    const fortuneData = [];
-    const visitorData = [];
+    // Verinin doğru formatta olup olmadığını kontrol et
+    const labels = data.zodiacSigns || data.labels || ['Koç', 'Boğa', 'İkizler', 'Yengeç', 'Aslan', 'Başak', 'Terazi', 'Akrep', 'Yay', 'Oğlak', 'Kova', 'Balık'];
+    const chartData = data.counts || data.data || Array(12).fill(0);
 
-    const dailyStats = JSON.parse(localStorage.getItem('dailyStats') || '{}');
-
-    // Son 14 günü al
-    for (let i = 13; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateString = date.toISOString().split('T')[0];
-
-        dates.push(formatShortDate(date));
-
-        if (dailyStats[dateString]) {
-            fortuneData.push(dailyStats[dateString].fortunes || 0);
-            visitorData.push(dailyStats[dateString].visitors || 0);
-        } else {
-            fortuneData.push(0);
-            visitorData.push(0);
-        }
+    // Chart.js kullanarak dağılımı göster
+    if (window.zodiacChart) {
+        window.zodiacChart.destroy();
     }
 
-    window.dailyActivityChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dates,
-            datasets: [
-                {
-                    label: 'Bakılan Fallar',
-                    data: fortuneData,
-                    borderColor: 'rgba(156, 39, 176, 0.8)',
-                    backgroundColor: 'rgba(156, 39, 176, 0.2)',
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Ziyaretçiler',
-                    data: visitorData,
-                    borderColor: 'rgba(33, 150, 243, 0.8)',
-                    backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Burç dağılımı grafiği
-function loadZodiacDistributionChart(fortuneLogs) {
-    const chartElement = document.getElementById('zodiacDistributionChart');
-    if (!chartElement) {
-        console.error('zodiacDistributionChart canvas bulunamadı');
-        return;
-    }
-
-    const ctx = chartElement.getContext('2d');
-    if (!ctx) {
-        console.error('2D context alınamadı');
-        return;
-    }
-
-    // Eğer önceki bir grafik varsa yok et
-    if (window.zodiacDistributionChart) {
-        window.zodiacDistributionChart.destroy();
-    }
-
-    const zodiacCounts = {};
-
-    // Burç sayılarını hesapla
-    fortuneLogs.forEach(log => {
-        if (!log) return;
-        const zodiac = log.zodiac || 'Belirtilmemiş';
-        zodiacCounts[zodiac] = (zodiacCounts[zodiac] || 0) + 1;
-    });
-
-    // Veriyi graph formatına dönüştür
-    const labels = Object.keys(zodiacCounts);
-    const data = Object.values(zodiacCounts);
-
-    // Burçlar için renkler
-    const colors = [
-        'rgba(255, 99, 132, 0.7)',
-        'rgba(54, 162, 235, 0.7)',
-        'rgba(255, 206, 86, 0.7)',
-        'rgba(75, 192, 192, 0.7)',
-        'rgba(153, 102, 255, 0.7)',
-        'rgba(255, 159, 64, 0.7)',
-        'rgba(199, 199, 199, 0.7)',
-        'rgba(83, 102, 255, 0.7)',
-        'rgba(40, 159, 64, 0.7)',
-        'rgba(210, 199, 30, 0.7)',
-        'rgba(180, 40, 150, 0.7)',
-        'rgba(70, 90, 220, 0.7)'
-    ];
-
-    // Verileri en çoktan en aza sırala
-    const combined = labels.map((label, i) => ({ label, data: data[i] }));
-    combined.sort((a, b) => b.data - a.data);
-
-    const sortedLabels = combined.map(item => item.label);
-    const sortedData = combined.map(item => item.data);
-    const sortedColors = combined.map((_, i) => colors[i % colors.length]);
-
-    window.zodiacDistributionChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: sortedLabels,
-            datasets: [{
-                data: sortedData,
-                backgroundColor: sortedColors,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        font: {
-                            size: 10
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                            return `${label}: ${value} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Saatlik aktivite grafiği
-function loadHourlyActivityChart(fortuneLogs) {
-    const chartElement = document.getElementById('hourlyActivityChart');
-    if (!chartElement) {
-        console.error('hourlyActivityChart canvas bulunamadı');
-        return;
-    }
-
-    const ctx = chartElement.getContext('2d');
-    if (!ctx) {
-        console.error('2D context alınamadı');
-        return;
-    }
-
-    // Eğer önceki bir grafik varsa yok et
-    if (window.hourlyActivityChart) {
-        window.hourlyActivityChart.destroy();
-    }
-
-    // Bugünün saatlik verisini al
-    const today = new Date().toISOString().split('T')[0];
-    const dailyStats = JSON.parse(localStorage.getItem('dailyStats') || '{}');
-    let hourlyData = (dailyStats[today] && dailyStats[today].hourlyStats) || Array(24).fill(0);
-
-    // Eğer veri yoksa, falların saatlerinden hesapla
-    if (hourlyData.every(val => val === 0) && fortuneLogs.length > 0) {
-        hourlyData = Array(24).fill(0);
-
-        const todayLogs = fortuneLogs.filter(log => {
-            if (!log || !log.date) return false;
-            try {
-                const logDate = new Date(log.date);
-                const logDateStr = logDate.toISOString().split('T')[0];
-                return logDateStr === today;
-            } catch (e) {
-                return false;
-            }
-        });
-
-        todayLogs.forEach(log => {
-            try {
-                const logDate = new Date(log.date);
-                const hour = logDate.getHours();
-                if (hour >= 0 && hour < 24) {
-                    hourlyData[hour]++;
-                }
-            } catch (e) {
-                console.error('Saat hesaplama hatası:', e);
-            }
-        });
-    }
-
-    // Saat etiketleri
-    const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-
-    window.hourlyActivityChart = new Chart(ctx, {
+    window.zodiacChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: hourLabels,
+            labels: labels,
             datasets: [{
-                label: 'Saat Başına Fal',
-                data: hourlyData,
-                backgroundColor: 'rgba(103, 58, 183, 0.6)',
-                borderColor: 'rgba(103, 58, 183, 0.8)',
+                label: 'Burç Dağılımı',
+                data: chartData,
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(199, 199, 199, 0.7)',
+                    'rgba(83, 102, 255, 0.7)',
+                    'rgba(40, 159, 64, 0.7)',
+                    'rgba(210, 102, 255, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 206, 86)',
+                    'rgb(75, 192, 192)',
+                    'rgb(153, 102, 255)',
+                    'rgb(255, 159, 64)',
+                    'rgb(199, 199, 199)',
+                    'rgb(83, 102, 255)',
+                    'rgb(40, 159, 64)',
+                    'rgb(210, 102, 255)',
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)'
+                ],
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        maxRotation: 90,
-                        minRotation: 45
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        precision: 0
                     }
                 }
             }
@@ -1879,328 +958,1441 @@ function loadHourlyActivityChart(fortuneLogs) {
     });
 }
 
-// Cihaz kullanımı grafiği
-function loadDeviceUsageChart(fortuneLogs) {
-    const chartElement = document.getElementById('deviceUsageChart');
-    if (!chartElement) {
-        console.error('deviceUsageChart canvas bulunamadı');
-        return;
+// Bildirim göster
+function showNotification(type, title, message) {
+    // Bu fonksiyon kullanıcıya bildirim gösterecek şekilde implemente edilebilir
+    // Örnek: Bootstrap toast, custom alert, vb.
+    console.log(`[${type}] ${title}: ${message}`);
+
+    // Basit bir alert
+    if (type === 'error') {
+        alert(`${title}\n${message}`);
+    }
+}
+
+// ... (rest of the fortune telling code, assuming it includes nameInput, selectedZodiac, fortune, resultContainer, and backButton variables) ...
+
+// Ana sayfadaki fal gönderim fonksiyonu
+function submitFortune(nameInput, selectedZodiac, fortune) {
+  if (!nameInput || !selectedZodiac || !fortune) {
+    console.error("Fal göndermek için gerekli veriler eksik");
+    return;
+  }
+
+  console.log("Fal gönderiliyor:", fortune);
+
+  // Falı sunucuya kaydet
+  saveFortuneToServer(nameInput, selectedZodiac, fortune)
+    .then(response => {
+      console.log("Fal kaydedildi:", response);
+
+      // Sonucu göster
+      const resultContainer = document.querySelector('.result-container');
+      if (resultContainer) {
+        resultContainer.classList.add('result-visible');
+      }
+
+      // Geri dönüş butonunu göster
+      const backButton = document.querySelector('.back-button');
+      if (backButton) {
+        setTimeout(() => {
+          backButton.style.display = 'block';
+          backButton.classList.add('fade-in');
+        }, 1000);
+      }
+    })
+    .catch(error => {
+      console.error("Fal kaydedilemedi:", error);      alert("Fal kaydedilirken bir sorun oluştu. Lütfen tekrar deneyin.");
+    });
+}
+
+// Admin dashboard fonksiyonları
+function initAdminDashboard() {
+    console.log("Admin paneli yükleniyor...");
+
+    // API durum elementini kontrol et
+    const apiStatusElement = document.getElementById('apiStatus');
+
+    if (apiStatusElement) {
+        apiStatusElement.textContent = 'Kontrol ediliyor...';
+        apiStatusElement.className = 'status-badge pending';
     }
 
-    const ctx = chartElement.getContext('2d');
-    if (!ctx) {
-        console.error('2D context alınamadı');
-        return;
-    }
+    // Önce API durumunu kontrol et, sonra verileri yükle
+    fetch('/api/status')
+        .then(response => {
+            if (response.ok) {
+                if (apiStatusElement) {
+                    apiStatusElement.textContent = 'Çevrimiçi';
+                    apiStatusElement.className = 'status-badge online';
+                }
+                loadRealData();
 
-    // Eğer önceki bir grafik varsa yok et
-    if (window.deviceUsageChart) {
-        window.deviceUsageChart.destroy();
-    }
+                // 60 saniyede bir yenile
+                setInterval(loadRealData, 60000);
+            } else {
+                if (apiStatusElement) {
+                    apiStatusElement.textContent = 'Çevrimdışı';
+                    apiStatusElement.className = 'status-badge offline';
+                }
+                loadDemoData();
+                console.warn('API yanıt verdi ancak hata döndü, demo veriler yükleniyor');
+            }
+        })
+        .catch(error => {
+            console.error('API erişimi yok:', error);
+            if (apiStatusElement) {
+                apiStatusElement.textContent = 'Çevrimdışı';
+                apiStatusElement.className = 'status-badge offline';
+            }
+            loadDemoData();
+            console.warn('API erişimi yok, demo veriler yükleniyor');
+        });
+}
 
-    const deviceCounts = {
-        'Mobil': 0,
-        'Masaüstü': 0
+// API durumunu kontrol et
+function checkApiStatus() {
+    console.log("API durumu kontrol ediliyor...");
+    fetch('/api/status')
+        .then(response => {
+            if (response.ok) {
+                document.getElementById('apiStatus').textContent = 'Çevrimiçi';
+                document.getElementById('apiStatus').className = 'status-badge online';
+                loadRealData();
+            } else {
+                console.log('API yanıt verdi ancak hata döndü:', response.status);
+                document.getElementById('apiStatus').textContent = 'Çevrimdışı';
+                document.getElementById('apiStatus').className = 'status-badge offline';
+                loadDemoData();
+            }
+        })
+        .catch(error => {
+            console.log('API erişimi yok:', error);
+            document.getElementById('apiStatus').textContent = 'Çevrimdışı';
+            document.getElementById('apiStatus').className = 'status-badge offline';
+            loadDemoData();
+        });
+}
+
+// Gerçek verileri API'den yükle
+function loadRealData() {
+    console.log('Gerçek verileri yüklemeye başlıyorum...');
+
+    // Yükleniyor durumunu göster
+    document.querySelectorAll('.loading-spinner').forEach(spinner => {
+        spinner.style.display = 'block';
+    });
+
+    document.querySelectorAll('.stat-card, .chart-container, .readings-table').forEach(element => {
+        if (element) element.classList.add('loading');
+    });
+
+    // Tüm API isteklerini Promise.all ile yap
+    Promise.all([
+        // Son falları getir
+        fetch('/api/admin/latest-readings')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP hata! Durum: ${response.status}`);
+                return response.json();
+            })
+            .catch(error => {
+                console.error('Son fallar alınamadı:', error);
+                throw error; // Hatayı yukarı taşı
+            }),
+
+        // İstatistikleri getir
+        fetch('/api/admin/stats')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP hata! Durum: ${response.status}`);
+                return response.json();
+            })
+            .catch(error => {
+                console.error('İstatistikler alınamadı:', error);
+                throw error; // Hatayı yukarı taşı
+            }),
+
+        // Burç dağılımını getir
+        fetch('/api/admin/zodiac-distribution')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP hata! Durum: ${response.status}`);
+                return response.json();
+            })
+            .catch(error => {
+                console.error('Burç dağılımı alınamadı:', error);
+                throw error; // Hatayı yukarı taşı
+            })
+    ])
+    .then(([fortunes, stats, distribution]) => {
+        console.log('Tüm veriler başarıyla alındı');
+
+        // Verileri göster
+        displayLatestFortunes(fortunes);
+        displayStats(stats);
+        displayZodiacDistribution(distribution);
+
+        // Yükleniyor durumunu kaldır
+        document.querySelectorAll('.loading-spinner').forEach(spinner => {
+            spinner.style.display = 'none';
+        });
+
+        document.querySelectorAll('.stat-card, .chart-container, .readings-table').forEach(element => {
+            if (element) element.classList.remove('loading');
+        });
+
+        // API durumunu güncelle
+        const apiStatusElement = document.getElementById('apiStatus');
+        if (apiStatusElement) {
+            apiStatusElement.textContent = 'Çevrimiçi';
+            apiStatusElement.className = 'status-badge online';
+        }
+    })
+    .catch(error => {
+        console.error('Veri yükleme hatası:', error);
+
+        // Demo verileri yükle
+        loadDemoData();
+
+        // API durumunu güncelle
+        const apiStatusElement = document.getElementById('apiStatus');
+        if (apiStatusElement) {
+            apiStatusElement.textContent = 'Çevrimdışı';
+            apiStatusElement.className = 'status-badge offline';
+        }
+    });
+}
+
+// Demo verileri yükle
+function loadDemoData() {
+    console.log("Demo veriler yükleniyor...");
+
+    // İstatistikler için demo veri
+    const demoStats = {
+        totalUsers: 120,
+        totalFortunes: 358,
+        todayFortunes: 42,
+        popularZodiac: 'Aslan',
+        lastUpdated: new Date().toISOString()
     };
 
-    // Cihaz sayılarını hesapla
-    fortuneLogs.forEach(log => {
-        if (!log) return;
-        if (log.deviceInfo && log.deviceInfo.isMobile) {
-            deviceCounts['Mobil']++;
-        } else {
-            deviceCounts['Masaüstü']++;
-        }
+    displayStats(demoStats);
+
+    // Son fallar için demo veri
+    const demoFortunes = [
+        { username: 'Ahmet Yılmaz', zodiac: 'Koç', reading: 'Önünüzdeki engelleri aşmanın yolu cesaret ve sabırdan geçiyor.', date: '2025-03-12 05:24:38' },
+        { username: 'Ayşe Demir', zodiac: 'Boğa', reading: 'Finansal açıdan yükselişe geçeceğiniz bir dönem başlıyor.', date: '2025-03-12 05:24:38' },
+        { username: 'Mehmet Kaya', zodiac: 'İkizler', reading: 'İletişim konusunda kendinizi geliştirecek yeni fırsatlara açık olun.', date: '2025-03-12 05:24:39' },
+        { username: 'Zeynep Şahin', zodiac: 'Yengeç', reading: 'Duygusal dengenizi koruyun, ailenize zaman ayırmanız gerekiyor.', date: '2025-03-12 05:24:39' },
+        { username: 'Ali Özkan', zodiac: 'Aslan', reading: 'Liderlik vasıflarınızı kullanma zamanı, kendinize güvenin.', date: '2025-03-12 05:24:39' },
+        { username: 'Fatma Yıldız', zodiac: 'Başak', reading: 'Detaylara özen gösterin, bu dönemde titizliğiniz ödüllendirilecek.', date: '2025-03-12 05:24:39' },
+        { username: 'Mustafa Şen', zodiac: 'Terazi', reading: 'Dengeyi sağlamanın önemi bu dönemde artacak, ilişkilerinizde adaletli olun.', date: '2025-03-12 05:24:39' },
+        { username: 'Sema Ünal', zodiac: 'Akrep', reading: 'İçgüdüleriniz size doğru yolu gösterecek, onları dinleyin.', date: '2025-03-12 05:24:39' },
+        { username: 'Emre Yıldız', zodiac: 'Yay', reading: 'Uzak yerlerden güzel haberler alacak, yeni maceralara atılacaksınız.', date: '2025-03-12 05:24:39' },
+        { username: 'Gülşen Toprak', zodiac: 'Oğlak', reading: 'Disiplininiz ve çalışkanlığınız sonuç verecek, hedeflerinize ulaşacaksınız.', date: '2025-03-12 05:24:39' }
+    ];
+
+    displayLatestFortunes(demoFortunes);
+
+    // Burç dağılımı için demo veri
+    const demoZodiacData = {
+        labels: ['Koç', 'Boğa', 'İkizler', 'Yengeç', 'Aslan', 'Başak', 'Terazi', 'Akrep', 'Yay', 'Oğlak', 'Kova', 'Balık'],
+        data: [42, 38, 25, 31, 48, 22, 19, 36, 29, 27, 18, 23]
+    };
+
+    displayZodiacDistribution(demoZodiacData);
+}
+
+// İstatistikleri yükle
+function loadStats() {
+    console.log("İstatistikler yükleniyor...");
+    fetch('/api/admin/stats')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hata! Durum: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            displayStats(data);
+        })
+        .catch(error => {
+            console.log('İstatistik yükleme hatası:', error);
+            // Hata durumunda demo verileri göster
+            const demoStats = {
+                totalUsers: 120,
+                totalFortunes: 358,
+                todayFortunes: 42,
+                popularZodiac: 'Aslan',
+                lastUpdated: new Date().toISOString()
+            };
+            displayStats(demoStats);
+        });
+}
+
+// Son falları yükle
+function loadLatestFortunes() {
+    console.log("Son fallar yükleniyor...");
+    fetch('/api/admin/latest-fortunes')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hata! Durum: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            displayLatestFortunes(data);
+        })
+        .catch(error => {
+            console.log('Son fallar yükleme hatası:', error);
+            // Hata durumunda demo verileri göster
+            const demoFortunes = [
+                { username: 'Ahmet Yılmaz', zodiac: 'Koç', reading: 'Önünüzdeki engelleri aşmanın yolu cesaret ve sabırdan geçiyor.', date: '2025-03-12 05:24:38' },
+                { username: 'Ayşe Demir', zodiac: 'Boğa', reading: 'Finansal açıdan yükselişe geçeceğiniz bir dönem başlıyor.', date: '2025-03-12 05:24:38' },
+                { username: 'Mehmet Kaya', zodiac: 'İkizler', reading: 'İletişim konusunda kendinizi geliştirecek yeni fırsatlara açık olun.', date: '2025-03-12 05:24:39' },
+                { username: 'Zeynep Şahin', zodiac: 'Yengeç', reading: 'Duygusal dengenizi koruyun, ailenize zaman ayırmanız gerekiyor.', date: '2025-03-12 05:24:39' },
+                { username: 'Ali Özkan', zodiac: 'Aslan', reading: 'Liderlik vasıflarınızı kullanma zamanı, kendinize güvenin.', date: '2025-03-12 05:24:39' }
+            ];
+            displayLatestFortunes(demoFortunes);
+        });
+}
+
+// Burç dağılımını yükle
+function loadZodiacDistribution() {
+    console.log("Burç dağılımı yükleniyor...");
+    fetch('/api/admin/zodiac-distribution')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hata! Durum: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            displayZodiacDistribution(data);
+        })
+        .catch(error => {
+            console.log('Burç dağılımı yükleme hatası:', error);
+            // Hata durumunda demo verileri göster
+            const demoZodiacData = {
+                labels: ['Koç', 'Boğa', 'İkizler', 'Yengeç', 'Aslan', 'Başak', 'Terazi', 'Akrep', 'Yay', 'Oğlak', 'Kova', 'Balık'],
+                data: [42, 38, 25, 31, 48, 22, 19, 36, 29, 27, 18, 23]
+            };
+            displayZodiacDistribution(demoZodiacData);
+        });
+}
+
+// Admin panelindeki eventleri ayarlar
+function setupAdminEvents() {
+    // ... (Event listener'ları buraya ekleyin) ...
+}
+
+
+// İstatistikleri göster
+function displayStats(stats) {
+    console.log('İstatistikler görüntüleniyor:', stats);
+
+    // Loading spinner'ları kaldır
+    document.querySelectorAll('.loading-spinner').forEach(spinner => {
+        spinner.style.display = 'none';
     });
 
-    // Telefon modeli dağılımını hesapla (en popüler 5 telefon)
-    const phoneModelCounts = {};
-    fortuneLogs.forEach(log => {
-        if (!log || !log.phoneModel) return;
-        const phoneModel = log.phoneModel;
-        if (phoneModel !== 'Masaüstü Cihaz' && phoneModel !== 'Bilinmiyor') {
-            phoneModelCounts[phoneModel] = (phoneModelCounts[phoneModel] || 0) + 1;
-        }
+    // Elementlere eriş
+    const elements = {
+        totalUsers: document.getElementById('totalUsers'),
+        totalReadings: document.getElementById('totalReadings'),
+        todayReadings: document.getElementById('todayReadings'),
+        mostPopularZodiac: document.getElementById('mostPopularZodiac'),
+        userGrowth: document.getElementById('userGrowth'),
+        readingGrowth: document.getElementById('readingGrowth'),
+        todayGrowth: document.getElementById('todayGrowth'),
+        lastUpdated: document.getElementById('lastUpdated')
+    };
+
+    // Elementler varsa değerleri güncelle
+    if (elements.totalUsers) elements.totalUsers.textContent = stats.totalUsers || 0;
+    if (elements.totalReadings) elements.totalReadings.textContent = stats.totalReadings || stats.totalFortunes || 0;
+    if (elements.todayReadings) elements.todayReadings.textContent = stats.todayReadings || stats.todayFortunes || 0;
+    if (elements.mostPopularZodiac) elements.mostPopularZodiac.textContent = stats.mostPopularZodiac || stats.popularZodiac || 'Belirtilmemiş';
+
+    // Büyüme oranlarını göster
+    if (elements.userGrowth) {
+        const userGrowthValue = stats.userGrowth || 0;
+        elements.userGrowth.textContent = `${userGrowthValue}%`;
+        elements.userGrowth.className = userGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    if (elements.readingGrowth) {
+        const readingGrowthValue = stats.readingGrowth || 0;
+        elements.readingGrowth.textContent = `${readingGrowthValue}%`;
+        elements.readingGrowth.className = readingGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    if (elements.todayGrowth) {
+        const todayGrowthValue = stats.todayGrowth || 0;
+        elements.todayGrowth.textContent = `${todayGrowthValue}%`;
+        elements.todayGrowth.className = todayGrowthValue >= 0 ? 'positive-growth' : 'negative-growth';
+    }
+
+    // Son güncelleme zamanını göster
+    if (elements.lastUpdated && stats.lastUpdated) {
+        const lastUpdatedDate = new Date(stats.lastUpdated);
+        elements.lastUpdated.textContent = `Son Güncelleme: ${lastUpdatedDate.toLocaleString('tr-TR')}`;
+    }
+
+    // İstatistik kartlarını görünür yap
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.classList.remove('loading');
     });
+}
+function startFingerprint(e) {
+                if (music && !music.paused) {
+                    music.volume = 0.1;
+                }
 
-    // En popüler 5 telefon modeli
-    const topPhoneModels = Object.entries(phoneModelCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .reduce((obj, [key, value]) => {
-            obj[key] = value;
-            return obj;
-        }, {});
+                if (e.type === 'touchstart') {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                } else {
+                    startX = e.clientX;
+                    startY = e.clientY;
+                }
 
-    // Ana cihaz dağılımı grafiği
-    window.deviceUsageChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Mobil', 'Masaüstü'],
-            datasets: [{
-                data: [deviceCounts['Mobil'], deviceCounts['Masaüstü']],
-                backgroundColor: [
-                    'rgba(76, 175, 80, 0.7)',
-                    'rgba(33, 150, 243, 0.7)'
-                ],
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                if (e.type === 'touchstart') e.preventDefault();
+                isFingerprintActive = true;
+
+                // Add processing class for animation
+                fingerprintButton.classList.add('processing');
+
+                const fingerprintLoader = document.getElementById('fingerprintLoader');
+                if (fingerprintLoader) {
+                    fingerprintLoader.style.display = 'block';
+                }
+
+                const scanLine = document.getElementById('scanLine');
+                if (scanLine) {
+                    scanLine.style.display = 'block';
+                }
+
+                // Add enhanced biometric sound effect
+                const scanSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-notification-221.mp3');
+                scanSound.volume = 0.2;
+                try {
+                    scanSound.play().catch(e => console.log("Sound playing error:", e));
+                } catch(e) {
+                    console.log("Sound error:", e);
+                }
+
+                // Create progress bar
+                const progressBar = document.createElement('div');
+                progressBar.className = 'progress-bar';
+                fingerprintButton.appendChild(progressBar);
+
+                // Add scanner line animations
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const scannerLine = document.createElement('div');
+                        scannerLine.className = 'scanner-line';
+                        scannerLine.style.top = `${20 + (i * 20)}%`;
+                        scannerLine.style.animationDuration = `${1 + (i * 0.3)}s`;
+                        scannerLine.style.opacity = '0.8';
+                        fingerprintButton.appendChild(scannerLine);
+                    }, i * 300);
+                }
+
+                // Add wave ripple effects
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const ripple = document.createElement('div');
+                        ripple.className = 'wave-ripple';
+                        fingerprintButton.appendChild(ripple);
+                    }, i * 600);
+                }
+
+                // Add DNA pattern effect
+                const dnaPattern = document.createElement('div');
+                dnaPattern.className = 'dna-pattern';
+                fingerprintButton.appendChild(dnaPattern);
+
+                // Add holographic overlay
+                const holoEffect = document.createElement('div');
+                holoEffect.className = 'holo-effect';
+                fingerprintButton.appendChild(holoEffect);
+
+                if (fingerprintIcon) {
+                    fingerprintIcon.style.opacity = '0.7';
+                }
+
+                // Advanced pulse animation
+                let pulseCount = 0;
+                const pulseAnimation = setInterval(() => {
+                    if (!isFingerprintActive) {
+                        clearInterval(pulseAnimation);
+                        return;
                     }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                            return `${label}: ${value} (${percentage}%)`;
+
+                    // Update icon animation
+                    if (fingerprintIcon) {
+                        const pulseValue = 1.2 + Math.sin(pulseCount * 0.2) * 0.2;
+                        const hueShift = Math.sin(pulseCount * 0.1) * 10;
+                        fingerprintIcon.style.filter = `brightness(${pulseValue}) hue-rotate(${hueShift}deg)`;
+                        fingerprintIcon.style.transform = `scale(${0.95 + Math.sin(pulseCount * 0.2) * 0.05})`;
+                    }
+
+                    // Update progress bar
+                    if (progressBar) {
+                        const progress = Math.min(100, (pulseCount / 30) * 100);
+                        progressBar.style.width = `${progress}%`;
+                    }
+
+                    // Create occasional particles
+                    if (pulseCount % 5 === 0) {
+                        createScanParticle(fingerprintButton);
+                    }
+
+                    pulseCount++;
+                }, 50);
+
+                // Create scan particles effect
+                createScanParticles(fingerprintButton);
+
+                // Create orbiting particles
+                createOrbitingParticles(fingerprintButton);
+
+                fingerprintTimer = setTimeout(function() {
+                    clearInterval(pulseAnimation);
+                    resetFingerprint();
+                }, 3000);
+            }
+
+            // Create a single scan particle
+            function createScanParticle(container) {
+                const particle = document.createElement('div');
+                particle.className = 'scan-particle';
+
+                // Random size and position
+                const size = Math.random() * 4 + 2;
+                const posX = Math.random() * 80 + 10; // 10-90%
+                const posY = Math.random() * 80 + 10; // 10-90%
+
+                // Random color
+                const hue = Math.random() > 0.5 ? 
+                    Math.floor(Math.random() * 40 + 240) : // blue range
+                    Math.floor(Math.random() * 60 + 280);  // purple range
+
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${posX}%`;
+                particle.style.top = `${posY}%`;
+                particle.style.background = `hsla(${hue}, 80%, 70%, 0.8)`;
+                particle.style.boxShadow = `0 0 ${size * 2}px hsla(${hue}, 80%, 60%, 0.6)`;
+
+                container.appendChild(particle);
+
+                // Remove after animation
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 1500);
+            }
+
+            // Create scanning particles for tech effect
+            function createScanParticles(container) {
+                if (!container) return;
+
+                const particleCount = 30; // Increased particle count
+
+                for (let i = 0; i < particleCount; i++) {
+                    setTimeout(() => {
+                        // Check if fingerprint process is still active
+                        if (!isFingerprintActive) return;
+
+                        const particle = document.createElement('div');
+                        particle.className = 'scan-particle';
+
+                        // Random position and properties
+                        const size = Math.random() * 5 + 2;
+                        const startX = Math.random() * 80 + 10;
+                        const startY = Math.random() * 80 + 10;
+                        const angle = Math.random() * 360;
+                        const duration = Math.random() * 1.5 + 0.5;
+
+                        // Random color values for more vibrant particles
+                        const hue = Math.floor(Math.random() * 60) + 220; // Blue to purple range
+                        const saturation = Math.floor(Math.random() * 40) + 60; // 60-100%
+                        const lightness = Math.floor(Math.random() * 30) + 60; // 60-90%
+
+                        particle.style.width = `${size}px`;
+                        particle.style.height = `${size}px`;
+                        particle.style.left = `${startX}%`;
+                        particle.style.top = `${startY}%`;
+                        particle.style.animationDuration = `${duration}s`;
+                        particle.style.transform = `rotate(${angle}deg)`;
+                        particle.style.background = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`;
+                        particle.style.boxShadow = `0 0 ${size}px hsla(${hue}, ${saturation}%, ${lightness}%, 0.5)`;
+
+                        container.appendChild(particle);
+
+                        // Remove particle after animation
+                        setTimeout(() => {
+                            if (particle.parentNode) {
+                                particle.parentNode.removeChild(particle);
+                            }
+                        }, duration * 1000);
+                    }, i * 50); // Reduced delay between particles
+                }
+            }
+
+            // Create enhanced orbiting particles with data visualization style
+            function createOrbitingParticles(container) {
+                if (!container) return;
+
+                const orbitCount = 3; // Three distinct orbits
+
+                // Different particle configs for each orbit
+                const orbitConfigs = [
+                    { 
+                        radius: 30, 
+                        particleCount: 6, 
+                        speed: 12, 
+                        particleSize: 3.5, 
+                        hueRange: [260, 290],
+                        delay: 0
+                    },
+                    { 
+                        radius: 40, 
+                        particleCount: 8, 
+                        speed: 18, 
+                        particleSize: 2.5, 
+                        hueRange: [220, 260],
+                        delay: 0.5
+                    },
+                    { 
+                        radius: 48, 
+                        particleCount: 12, 
+                        speed: 24, 
+                        particleSize: 2, 
+                        hueRange: [180, 220],
+                        delay: 1
+                    }
+                ];
+
+                // Create each orbit
+                for (let orbitIndex = 0; orbitIndex < orbitCount; orbitIndex++) {
+                    const config = orbitConfigs[orbitIndex];
+                    const direction = orbitIndex % 2 === 0 ? 1 : -1; // Alternate directions
+
+                    // Create orbit container for animation
+                    const orbitContainer =document.createElement('div');
+                    orbitContainer.className = 'orbit-container';
+                    orbitContainer.style.position = 'absolute';
+                    orbitContainer.style.width = '100%';
+                    orbitContainer.style.height = '100%';
+                    orbitContainer.style.top = '0';
+                    orbitContainer.style.left = '0';
+                    orbitContainer.style.animation = `orbit ${config.speed}s linear infinite ${config.delay}s`;
+                    orbitContainer.style.animationDirection = direction > 0 ? 'normal' : 'reverse';
+                    container.appendChild(orbitContainer);
+
+                    // Add particles to this orbit
+                    for (let i = 0; i < config.particleCount; i++) {
+                        const angle = (i / config.particleCount) * 360;
+                        const particle = document.createElement('div');
+                        particle.className = 'orbit-particle';
+
+                        // Calculate hue from the range
+                        const hue = Math.floor(Math.random() * (config.hueRange[1] - config.hueRange[0])) + config.hueRange[0];
+
+                        // Randomize size slightly for more organic look
+                        const size = config.particleSize * (0.8 + Math.random() * 0.4);
+
+                        // Apply styles
+                        particle.style.width = `${size}px`;
+                        particle.style.height = `${size}px`;
+                        particle.style.background = `hsla(${hue}, 85%, 65%, 0.85)`;
+                        particle.style.boxShadow = `0 0 ${size * 2}px hsla(${hue}, 90%, 60%, 0.7)`;
+
+                        // Position at the orbit radius
+                        const x = 50 + config.radius * Math.cos(angle * Math.PI / 180);
+                        const y = 50 + config.radius * Math.sin(angle * Math.PI / 180);
+                        particle.style.left = `${x}%`;
+                        particle.style.top = `${y}%`;
+
+                        // Add slight pulsing for some particles
+                        if (Math.random() > 0.7) {
+                            particle.style.animation = `pulse 2s ease-in-out infinite ${Math.random()}s`;
                         }
+
+                        orbitContainer.appendChild(particle);
+                    }
+
+                    // Remove after scan completes
+                    setTimeout(() => {
+                        if (orbitContainer.parentNode) {
+                            orbitContainer.classList.add('fade-out');
+                            setTimeout(() => {
+                                if (orbitContainer.parentNode) {
+                                    orbitContainer.parentNode.removeChild(orbitContainer);
+                                }
+                            }, 500);
+                        }
+                    }, 3100);
+                }
+            }
+
+function resetFingerprint() {
+                if (fingerprintTimer) {
+                    clearTimeout(fingerprintTimer);
+                    fingerprintTimer = null;
+                }
+
+                // Get loader and scan line elements
+                const fingerprintLoader = document.getElementById('fingerprintLoader');
+                const scanLine = document.getElementById('scanLine');
+
+                // Start completion animation before removing elements
+                let isSuccess = Math.random() > 0.2; // 80% success rate for demo
+
+                if (isSuccess) {
+                    // Success confirmation animation
+                    const successPulse = document.createElement('div');
+                    successPulse.className = 'success-pulse';
+                    fingerprintButton.appendChild(successPulse);
+
+                    // Confirmation checkmark
+                    const checkmark = document.createElement('div');
+                    checkmark.className = 'success-checkmark';
+                    checkmark.innerHTML = '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="25" fill="none"/><path fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>';
+                    checkmark.classList.add('active');
+                    fingerprintButton.appendChild(checkmark);
+
+                    // Success sound
+                    const successSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magical-coin-win-1936.mp3');
+                    successSound.volume = 0.3;
+                    try {
+                        successSound.play().catch(e => console.log("Sound playing error:", e));
+                    } catch(e) {
+                        console.log("Sound error:", e);
+                    }
+
+                    // Create success particles
+                    for (let i = 0; i < 20; i++) {
+                        setTimeout(() => {
+                            createSuccessParticle(fingerprintButton);
+                        }, i * 50);
+                    }
+                } else {
+                    // Error animation for unsuccessful scan
+                    const errorPulse = document.createElement('div');
+                    errorPulse.className = 'error-pulse';
+                    fingerprintButton.appendChild(errorPulse);
+
+                    // Error X mark
+                    const errorMark = document.createElement('div');
+                    errorMark.className = 'error-mark';
+                    errorMark.innerHTML = '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="25" fill="none"/><path fill="none" d="M16 16 36 36 M36 16 16 36"/></svg>';
+                    errorMark.classList.add('active');
+                    fingerprintButton.appendChild(errorMark);
+
+                    // Error sound
+                    const errorSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
+                    errorSound.volume = 0.3;
+                    try {
+                        errorSound.play().catch(e => console.log("Sound playing error:", e));
+                    } catch(e) {
+                        console.log("Sound error:", e);
                     }
                 }
+
+                // Add fade-out class to all animation elements
+                const animationElements = [
+                    '.progress-bar',
+                    '.scan-particle',
+                    '.orbit-particle',
+                    '.orbit-container',
+                    '.scanner-line',
+                    '.wave-ripple',
+                    '.dna-pattern',
+                    '.holo-effect',
+                    '.fingerprint-dots'
+                ];
+
+                animationElements.forEach(selector => {
+                    const elements = fingerprintButton.querySelectorAll(selector);
+                    elements.forEach(el => {
+                        el.classList.add('fade-out');
+                    });
+                });
+
+                // Delayed cleanup after fade out
+                setTimeout(() => {
+                    isFingerprintActive = false;
+
+                    if (fingerprintLoader) {
+                        fingerprintLoader.style.display = 'none';
+                    }
+
+                    if (scanLine) {
+                        scanLine.style.display = 'none';
+                    }
+
+                    // Restore icon to normal state
+                    if (fingerprintIcon) {
+                        fingerprintIcon.style.transition = 'all 0.5s ease-out';
+                        fingerprintIcon.style.opacity = '1';
+                        fingerprintIcon.style.transform = '';
+                        fingerprintIcon.style.filter = '';
+                    }
+
+                    // Remove processing class
+                    fingerprintButton.classList.remove('processing');
+
+                    // Remove all animation elements
+                    animationElements.forEach(selector => {
+                        const elements = fingerprintButton.querySelectorAll(selector);
+                        elements.forEach(el => {
+                            if (el.parentNode) {
+                                el.parentNode.removeChild(el);
+                            }
+                        });
+                    });
+
+                    // Remove success/error indicators after animation completes
+                    setTimeout(() => {
+                        const successMark = fingerprintButton.querySelector('.success-checkmark');
+                        const errorMark = fingerprintButton.querySelector('.error-mark');
+                        const successPulse = fingerprintButton.querySelector('.success-pulse');
+                        const errorPulse = fingerprintButton.querySelector('.error-pulse');
+
+                        if (successMark) successMark.classList.add('fade-out');
+                        if (errorMark) errorMark.classList.add('fade-out');
+                        if (successPulse) successPulse.classList.add('fade-out');
+                        if (errorPulse) errorPulse.classList.add('fade-out');
+
+                        setTimeout(() => {
+                            if (successMark && successMark.parentNode) successMark.parentNode.removeChild(successMark);
+                            if (errorMark && errorMark.parentNode) errorMark.parentNode.removeChild(errorMark);
+                            if (successPulse && successPulse.parentNode) successPulse.parentNode.removeChild(successPulse);
+                            if (errorPulse && errorPulse.parentNode) errorPulse.parentNode.removeChild(errorPulse);
+                        }, 500);
+                    }, 1500);
+                }, 500);
             }
-        }
-    });
 
-    // Eğer üst telefon modelleri için detay kısmı eklemek istiyorsanız:
-    if (Object.keys(topPhoneModels).length > 0) {
-        const container = chartElement.parentElement;
-        if (container) {
-            const detailDiv = document.createElement('div');
-            detailDiv.className = 'phone-models-detail';
-            detailDiv.innerHTML = `
-                <div class="phone-models-title">En Popüler Telefonlar</div>
-                <div class="phone-models-list">
-                    ${Object.entries(topPhoneModels).map(([model, count], index) => `
-                        <div class="phone-model-item">
-                            <span class="phone-model-rank">${index + 1}</span>
-                            <span class="phone-model-name">${model}</span>
-                            <span class="phone-model-count">${count}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+            // Create success particle
+            function createSuccessParticle(container) {
+                if (!container) return;
 
-            // Eğer zaten detay varsa kaldır
-            const existingDetail = container.querySelector('.phone-models-detail');
-            if (existingDetail) {
-                container.removeChild(existingDetail);
+                const particle = document.createElement('div');
+                particle.className = 'success-particle';
+
+                // Random size
+                const size = Math.random() * 6 + 3;
+
+                // Random position from center
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 30 + 10;
+                const x = 50 + Math.cos(angle) * distance;
+                const y = 50 + Math.sin(angle) * distance;
+
+                // Random color (greens and golds for success)
+                const colors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107', '#FFEB3B'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${x}%`;
+                particle.style.top = `${y}%`;
+                particle.style.backgroundColor = color;
+                particle.style.boxShadow = `0 0 ${size}px ${color}`;
+
+                container.appendChild(particle);
+
+                // Remove after animation
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 1000);
             }
 
-            container.appendChild(detailDiv);
+            // Create celebration particles for successful scan
+            function createSuccessParticles() {
+                const container = fingerprintButton;
+                const particleCount = 40;
 
-            // Stil ekle
-            const style = document.createElement('style');
-            style.textContent = `
-                .phone-models-detail {
-                    margin-top: 15px;
-                    border-top: 1px solid rgba(255, 255, 255, 0.1);
-                    padding-top: 10px;
-                }
-                .phone-models-title {
-                    font-size: 0.9rem;
-                    color: rgba(255, 255, 255, 0.7);
-                    margin-bottom: 8px;
-                    text-align: center;
-                }
-                .phone-models-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-                }
-                .phone-model-item {
-                    display: flex;
-                    align-items: center;
-                    font-size: 0.8rem;
-                }
-                .phone-model-rank {
-                    background-color: rgba(76, 175, 80, 0.7);
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-right: 8px;
-                    font-size: 0.7rem;
-                    font-weight: bold;
-                }
-                .phone-model-name {
-                    flex: 1;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                .phone-model-count {
-                    background-color: rgba(0, 0, 0, 0.3);
-                    padding: 2px 6px;
-                    border-radius: 10px;
-                    margin-left: 5px;
-                }
-            `;
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'success-particle';
 
-            // Eğer stil yoksa ekle
-            const existingStyle = document.getElementById('phone-models-style');
-            if (!existingStyle) {
-                style.id = 'phone-models-style';
-                document.head.appendChild(style);
+                    // Random properties for confetti effect
+                    const size = Math.random() * 6 + 3;
+                    const angle = Math.random() * 360;
+                    const distance = Math.random() * 60 + 20;
+                    const duration = Math.random() * 1 + 0.8;
+                    const delay = Math.random() * 0.3;
+
+                    // Random color
+                    const colors = ['#76FF03', '#64FFDA', '#18FFFF', '#EEFF41', '#FFFF00', '#69F0AE'];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.backgroundColor = color;
+                    particle.style.boxShadow = `0 0 ${size/2}px ${color}`;
+                    particle.style.left = '50%';
+                    particle.style.top = '50%';
+                    particle.style.animationDuration = `${duration}s`;
+                    particle.style.animationDelay = `${delay}s`;
+
+                    // Set unique transform for each particle
+                    const transform = `rotate(${angle}deg) translate(${distance}px)`;
+                    particle.style.transform = transform;
+
+                    container.appendChild(particle);
+
+                    // Remove particle after animation
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, (duration + delay) * 1000);
+                }
             }
-        }
-    }
-}
-
-// Kısa tarih formatı (gün/ay)
-function formatShortDate(date) {
-    return `${date.getDate()}/${date.getMonth() + 1}`;
-}
-
-// Saniyeyi dakika:saniye formatına dönüştür
-function formatTime(seconds) {
-    if (seconds < 60) {
-        return `${seconds}s`;
-    } else {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}d ${remainingSeconds}s`;
-    }
-}
-
-// Gerçek zamanlı istatistikleri güncelle
-function updateRealtimeStats(fortuneLogs) {
-    try {
-        fortuneLogs = fortuneLogs || JSON.parse(localStorage.getItem('fortuneLogs') || '[]');
-        const now = new Date();
-        const oneHourAgo = new Date(now - (60 * 60 * 1000));
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        // Son bir saatteki fallar
-        const lastHourFortunes = fortuneLogs.filter(log => {
-            if (!log || !log.date) return false;
-            try {
-                const logDate = new Date(log.date);
-                return logDate >= oneHourAgo;
-            } catch (e) {
-                return false;
-            }
-        }).length;
-
-        // Bugünkü toplam fallar
-        const todaysFortunes = fortuneLogs.filter(log => {
-            if (!log || !log.date) return false;
-            try {
-                const logDate = new Date(log.date);
-                return logDate >= today;
-            } catch (e) {
-                return false;
-            }
-        }).length;
-
-        // Ortalama oturum süresi (son 50 kayıt)
-        let totalSessionTime = 0;
-        let sessionCount = 0;
-
-        const recentLogs = fortuneLogs.slice(-50);
-        recentLogs.forEach(log => {
-            if (log && log.sessionDuration && log.sessionDuration > 0) {
-                totalSessionTime += log.sessionDuration;
-                sessionCount++;
-            }
-        });
-
-        const avgSessionTime = sessionCount > 0 ? Math.round(totalSessionTime / sessionCount) : 0;
-
-        // Aktif kullanıcı sayısı simülasyonu
-        const maxActiveUsers = Math.max(1, Math.floor(lastHourFortunes / 2));
-        const activeUsers = Math.floor(Math.random() * maxActiveUsers) + 1;
-
-        // İstatistikleri güncelle - null kontrol
-        const elements = {
-            'currentActiveUsers': activeUsers,
-            'lastHourFortunes': lastHourFortunes,
-            'todaysTotalFortunes': todaysFortunes,
-            'averageSessionTime': formatTime(avgSessionTime)
-        };
-
-        Object.entries(elements).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = value;
-                highlightValue(id);
-            }
-        });
-    } catch (error) {
-        console.error('Gerçek zamanlı istatistik güncelleme hatası:', error);
-    }
-}
-
-// Element değerini vurgula
-function highlightValue(elementId) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    element.style.color = '#FFC107';
-
-    setTimeout(() => {
-        element.style.transition = 'color 1s ease';
-        element.style.color = '';
-    }, 300);
-}
-
-// Tüm grafikleri tek seferde yükleme
-function loadAllCharts(fortuneLogs) {
-    try {
-        // Yükleniyor göstergesini kaldır
-        const loadingIndicator = document.querySelector('.charts-loading');
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
-
-        // Her grafik için ayrı try-catch bloklarıyla hata yakalama
-        try {
-            loadDailyActivityChart(fortuneLogs);
-        } catch (error) {
-            console.error('Günlük aktivite grafiği yüklenirken hata:', error);
-            showErrorInChart('dailyActivityChart');
-        }
-
-        try {
-            loadZodiacDistributionChart(fortuneLogs);
-        } catch (error) {
-            console.error('Burç dağılımı grafiği yüklenirken hata:', error);
-            showErrorInChart('zodiacDistributionChart');
-        }
-
-        try {
-            loadHourlyActivityChart(fortuneLogs);
-        } catch (error) {
-            console.error('Saatlik aktivite grafiği yüklenirken hata:', error);
-            showErrorInChart('hourlyActivityChart');
-        }
-
-        try {
-            loadDeviceUsageChart(fortuneLogs);
-        } catch (error) {
-            console.error('Cihaz kullanımı grafiği yüklenirken hata:', error);
-            showErrorInChart('deviceUsageChart');
-        }
-
-        // Gerçek zamanlı istatistikler
-        updateRealtimeStats(fortuneLogs);
-    } catch (error) {
-        console.error('Grafikler yüklenirken genel hata:', error);
-    }
-}
+// Reklam gösterimi için yardımcı fonksiyon
 function showInterstitialAd() {
-    // Bu fonksiyon reklamları göstermek için kullanılıyordu
-    // Şimdi reklam olmadığı için sadece false döndürüyoruz
-    console.log("Reklam gösterme fonksiyonu çağrıldı fakat reklamlar devre dışı.");
-    return false;
+    console.log('Yeni fal için reklam gösterimi atlandı - reklam işlevselliği devre dışı.');
+    // Burada ileride reklam gösterimi ekleyebilirsiniz
 }
+
+document.getElementById('newFortuneButton').addEventListener('click', function() {
+                // Hide fortune section
+                fortuneSection.classList.remove('visible');
+                fortuneSection.classList.add('hidden');
+
+                // Hide horoscope section if it's visible
+                horoscopeSection.classList.remove('visible');
+                horoscopeSection.classList.add('hidden');
+
+                // Show the name input section (main screen)
+                nameSection.classList.remove('hidden');
+                nameSection.classList.add('visible');
+
+                // Reset interstitial ad flag to show it again when user looks at a new fortune
+                let interstitialAdShown = false;
+
+                // Show interstitial ad when user clicks "Yeni Fal" button
+                showInterstitialAd();
+
+                // Clear the input fields
+                document.getElementById('firstName').value = '';
+                document.getElementById('lastName').value = '';
+                document.getElementById('birthdate').value = '';
+            });
+
+// Admin dashboard başlatma fonksiyonu
+function initAdminDashboard() {
+    console.log("Admin dashboard başlatılıyor...");
+
+    // Eğer admin sayfasında değilsek, işlem yapma
+    if (!window.location.pathname.includes('admin-dashboard.html')) {
+        console.log('Admin dashboard sayfasında değiliz.');
+        return;
+    }
+
+    // Admin giriş durumunu kontrol et
+    if (localStorage.getItem('adminLoggedIn') !== 'true') {
+        console.log('Admin girişi yapılmamış, login sayfasına yönlendiriliyor...');
+        window.location.href = 'admin.html';
+        return;
+    }
+
+    // API durumunu kontrol et
+    const apiStatusElement = document.getElementById('apiStatus');
+    if (apiStatusElement) {
+        apiStatusElement.textContent = 'Kontrol ediliyor...';
+        apiStatusElement.className = 'status-badge pending';
+    }
+
+    // Admin verilerini yükle
+    loadAdminDashboardData();
+
+    // Event listener'ları ayarla
+    setupAdminEvents();
+
+    // Her 60 saniyede bir verileri otomatik yenile
+    setInterval(() => {
+        loadAdminDashboardData();
+    }, 60000);
+}
+
+// Admin paneli event listener'larını ayarla
+function setupAdminEvents() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadAdminDashboardData();
+            showNotification('info', 'Yenileniyor', 'Veriler yenileniyor...');
+        });
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('adminLoggedIn');
+            localStorage.setItem('adminLastLogout', Date.now());
+            showNotification('success', 'Çıkış Yapılıyor', 'Çıkış işlemi gerçekleştiriliyor...');
+
+            setTimeout(() => {
+                window.location.href = 'admin.html';
+            }, 1000);
+        });
+    }
+}
+
+.fingerprint-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 4;
+            opacity: 0;
+            background-image: radial-gradient(
+                rgba(255, 255, 255, 0.9) 1px, 
+                transparent 1px
+            );
+            background-size: 6px 6px;
+            border-radius: 50%;
+            animation: fingerprint-dots-reveal 3s ease forwards;
+}
+
+@keyframes fingerprint-dots-reveal {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.dna-pattern {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0;
+    background-image: linear-gradient(
+        45deg, 
+        rgba(255, 255, 255, 0.2) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0.2) 75%, 
+        transparent 75%
+    );
+    background-size: 10px 10px;
+    animation: dna-pattern-reveal 2s ease forwards;
+}
+
+@keyframes dna-pattern-reveal {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.fingerprint-match {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    background-image: radial-gradient(
+        circle at center, 
+        rgba(255, 255, 255, 0.3), 
+        transparent
+    );
+    background-size: 40px 40px;
+    animation: fingerprint-match-reveal 1.5s ease forwards;
+}
+
+@keyframes fingerprint-match-reveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+.wave-ripple {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 2;
+    border: 2px solid rgba(123, 104, 238, 0.6);
+    border-radius: 50%;
+    animation: wave-ripple-animation 1.2s ease-in-out infinite;
+}
+
+@keyframes wave-ripple-animation {
+    0% {
+        transform: scale(0.5);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.scanning-beam {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.5);
+    animation: scanning-beam-animation 1s linear infinite;
+}
+
+@keyframes scanning-beam-animation {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        transform: translateX(-50%) translateY(100%);
+    }
+}
+
+
+.holo-overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image: radial-gradient(
+        circle at 20% 30%, 
+        rgba(123, 104, 238, 0.1), 
+        transparent 50%
+    );
+    animation: holo-overlay-animation 2s infinite linear;
+}
+
+@keyframes holo-overlay-animation {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: -200px -200px;
+    }
+}
+
+.scan-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.scanner-line {
+    position: absolute;
+    bottom: 5px;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.4);
+    animation: scanner-line-animation 0.6s linear infinite;
+}
+
+@keyframes scanner-line-animation {
+    0%, 100% {
+        transform: scaleX(0);
+    }
+    50% {
+        transform: scaleX(1);
+    }
+}
+
+.scan-particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: scan-particle-animation linear forwards;
+}
+
+@keyframes scan-particle-animation {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2);
+    }
+}
+
+.orbit-particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: orbit linear infinite;
+}
+
+@keyframes orbit {
+    0% {
+        transform: rotate(0deg) translate(0) rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg) translate(0) rotate(-360deg);
+    }
+}
+
+.success-flash {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 255, 0, 0.4);
+    border-radius: 50%;
+    animation: success-flash-animation 0.8s ease-out forwards;
+}
+
+@keyframes success-flash-animation {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.success-checkmark {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.success-checkmark svg {
+    width: 100%;
+    height: 100%;
+}
+
+.success-checkmark svg circle {
+    stroke: #00CC00;
+    stroke-width: 4;
+    stroke-dasharray: 157;
+    stroke-dashoffset: 157;
+    animation: success-checkmark-circle-animation 0.6s ease-out forwards 0.1s;
+}
+
+.success-checkmark svg path {
+    stroke: #00CC00;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: success-checkmark-path-animation 0.8s ease-out forwards 0.3s;
+}
+
+@keyframes success-checkmark-circle-animation {
+    0% {
+        stroke-dashoffset: 157;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes success-checkmark-path-animation {
+    0% {
+        stroke-dashoffset: 40;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.error-flash {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(255, 0, 0, 0.4);
+    border-radius: 50%;
+    animation: error-flash-animation 0.8s ease-out forwards;
+}
+
+@keyframes error-flash-animation {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.error-mark {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.error-mark svg {
+    width: 100%;
+    height: 100%;
+}
+
+.error-mark svg circle {
+    stroke: #FF0000;
+    stroke-width: 4;
+    stroke-dasharray: 157;
+    stroke-dashoffset: 157;
+    animation: error-mark-circle-animation 0.6s ease-out forwards 0.1s;
+}
+
+.error-mark svg path {
+    stroke: #FF0000;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: error-mark-path-animation 0.8s ease-out forwards 0.3s;
+}
+
+@keyframes error-mark-circle-animation {
+    0% {
+        stroke-dashoffset: 157;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes error-mark-path-animation {
+    0% {
+        stroke-dashoffset: 40;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.success-particle, .error-particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: particle-animation linear forwards;
+}
+
+@keyframes particle-animation {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2);
+    }
+}
+
+.fade-out {
+    animation: fade-out 0.5s forwards;
+}
+
+
+@keyframes fade-out {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.processing {
+    filter: grayscale(0.5); /* Add a subtle grayscale effect */
+    animation: pulse 1.2s ease-in-out infinite; /* Add a pulsing animation */
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.orbit-container {
+    animation: orbit linear infinite;
+}
+
+@keyframes orbit {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+document.getElementById('shareButton').addEventListener('click', function() {
+                const fortune = document.getElementById('fortuneResult').textContent;
+                const userName = userInfo.firstName + " " + userInfo.lastName;
+                const zodiac = userInfo.zodiac;
+
+                const shareText = `${userName} - ${zodiac}\n\n${fortune}\n\nOmFortune tarafından hazırlandı`;
+
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'OmFortune - Falım',
+                        text: shareText
+                    }).catch(error => {
+                        console.error('Paylaşım hatası:', error);
+                        alert(shareText);
+                    });
+                } else {
+                    alert(shareText);
+                }
+            });
