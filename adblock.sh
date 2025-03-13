@@ -1,4 +1,3 @@
-
 #!/bin/bash
 # Tüm reklam izleme kodları temizlendi
 echo "Tüm reklam kodları siteden kaldırıldı"
